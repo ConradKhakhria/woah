@@ -13,6 +13,7 @@ pub enum StatementType<'s, 't> {
 
     Declare {
         value_name: &'t Token<'s>,
+        value_type: Option<TypeKind<'s, 't>>,
         value: Option<Expr<'s, 't>>,
         constant: bool
     },
@@ -97,12 +98,10 @@ fn parse_declare<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     };
 
     if tokens.len() < 4 {
-        return Some(
-            Error::new(ErrorKind::SyntaxError)
+        return Some(Error::new(ErrorKind::SyntaxError)
                 .set_position(tokens[0].position())
-                .set_message(format!("Unrecognised syntax in '{}' statement", if constant { "let" } else { "var" }))
-                .into()
-        );
+                .set_message("Declaration must have either a type annotation or a value")
+                .into());
     }
 
     let value_name = match &tokens[1] {
@@ -110,27 +109,62 @@ fn parse_declare<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         _ => return None
     };
 
-    let value = if tokens.len() == 2 {
-        None
-    } else if tokens[2].str_equals("=") {
-        match parse_expression(&tokens[3..], tokens[3].position()) {
-            Ok(expr) => Some(expr),
-            Err(es) => return Some(Err(es))
+    let mut assign_index = None;
+    let mut errors = Vec::new();
+
+    for i in 0..tokens.len() {
+        if tokens[i].str_equals("=") {
+            match assign_index {
+                None => {
+                    assign_index = Some(i);
+                    break;
+                },
+    
+                Some(_) => {
+                    return Some(Error::new(ErrorKind::SyntaxError)
+                                    .set_position(tokens[i].position())
+                                    .set_message("Found 2 assignments in declaration")
+                                    .into())
+                }
+            }
+        }
+    }
+
+    let value_type = if tokens[2].str_equals(":") {
+        match TypeKind::from_tokens(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
+            Ok(tp) => Some(tp),
+            Err(ref mut es) => {
+                errors.append(es);
+                None
+            }
         }
     } else {
-        return Some(Error::new(ErrorKind::SyntaxError)
-                .set_position(tokens[2].position())
-                .set_message("Malformed value declaration")
-                .into());
+        None
     };
 
-    Some(Ok(
-        Statement {
-            stmt_type: StatementType::Declare { value_name, value, constant },
-            first_token: tokens.first().unwrap(),
+    let value = match assign_index {
+        Some(i) => {
+            match parse_expression(&tokens[i+1..], tokens[i+1].position()) {
+                Ok(expr) => Some(expr),
+                Err(ref mut es) => {
+                    errors.append(es);
+                    None
+                }
+            }
+        },
+
+        None => None
+    };
+
+    Some(if errors.is_empty() {
+        Ok(Statement {
+            stmt_type: StatementType::Declare { value_name, value_type, value, constant },
+            first_token: &tokens[0],
             last_token: tokens.last().unwrap()
-        }
-    ))
+        })
+    } else {
+        Err(errors)
+    })
 }
 
 
