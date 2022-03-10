@@ -7,7 +7,7 @@ fn main() {
     let filename = std::env::args()
                     .filter(|a| a.ends_with(".woah"))
                     .next()
-                    .unwrap();
+                    .expect("No file supplied");
 
     if let Err(es) = hacky_testbed(filename.clone()) {
         let source_lines = std::fs::read_to_string(&filename)
@@ -28,9 +28,9 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let source = std::fs::read_to_string(&filename).unwrap();
     let tokens = lexer::tokenise(&source, &filename, (1, 1))?;
 
-    let parsed_type = parse::TypeKind::from_tokens(&tokens[..])?;
+    let parsed_stmt = parse::parse_block(&tokens[..])?;
 
-    println!("{:#?}", parsed_type);
+    println!("{:#?}", parsed_stmt);
 
     Ok(())
 }
