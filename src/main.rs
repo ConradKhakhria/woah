@@ -3,13 +3,9 @@ mod lexer;
 mod parse;
 mod token;
 
-use crate::{
-    error::Error
-};
-
 fn main() {
     let filename = std::env::args()
-                    .filter(|a| a.ends_with(".ccdm"))
+                    .filter(|a| a.ends_with(".woah"))
                     .next()
                     .unwrap();
 
@@ -26,7 +22,7 @@ fn main() {
     }
 }
 
-fn hacky_testbed(filename: String) -> Result<(), Vec<Error>> {
+fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     /* This will be the testbed before the environment system is set up properly */
 
     let source = std::fs::read_to_string(&filename).unwrap();
