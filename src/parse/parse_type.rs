@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum TypeKind<'t, 's> {
+pub enum TypeKind<'s, 't> {
     Int,
 
     Float,
@@ -15,17 +15,17 @@ pub enum TypeKind<'t, 's> {
 
     Bool,
 
-    MutRef(Box<TypeKind<'t, 's>>),
+    MutRef(Box<TypeKind<'s, 't>>),
 
-    List(Box<TypeKind<'t, 's>>),
+    List(Box<TypeKind<'s, 't>>),
 
     HigherOrder {
         name: &'t Token<'s>,
-        args: Vec<TypeKind<'t, 's>>
+        args: Vec<TypeKind<'s, 't>>
     }
 }
 
-impl<'t, 's> TypeKind<'t, 's> {
+impl<'s, 't> TypeKind<'s, 't> {
     pub fn from_tokens(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
         /* Parses a type */
 
@@ -95,7 +95,7 @@ impl<'t, 's> TypeKind<'t, 's> {
     }
 }
 
-impl<'t, 's> PartialEq for TypeKind<'t, 's> {
+impl<'s, 't> PartialEq for TypeKind<'s, 't> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TypeKind::Bool, TypeKind::Bool)   => true,

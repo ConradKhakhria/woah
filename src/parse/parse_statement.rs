@@ -429,7 +429,7 @@ fn parse_expr<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
 // For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
 // as a function variable
-const PARSE_OPTIONS: [for<'t, 's> fn(&'t [Token<'s>]) -> Option<Result<Statement<'s, 't>, Vec<Error>>>; 7] = [
+const PARSE_OPTIONS: [for<'s, 't> fn(&'t [Token<'s>]) -> Option<Result<Statement<'s, 't>, Vec<Error>>>; 7] = [
     parse_declare,
     parse_assignment,
     parse_conditional,

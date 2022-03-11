@@ -311,7 +311,7 @@ fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
 // For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
 // as a function variable
-const PARSE_OPTIONS: [for<'t, 's> fn(&'t [Token<'s>]) -> Option<Result<Expr<'s, 't>, Vec<Error>>>; 5] = [
+const PARSE_OPTIONS: [for<'s, 't> fn(&'t [Token<'s>]) -> Option<Result<Expr<'s, 't>, Vec<Error>>>; 5] = [
     parse_atomic_expression,
     parse_compound,
     parse_funcall,
