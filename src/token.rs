@@ -105,3 +105,18 @@ impl<'s> Token<'s> {
         slices
     }
 }
+
+
+impl<'s> std::fmt::Display for Token<'s> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Token::Identifier { string, .. } => string,
+            Token::Number     { string, .. } => string,
+            Token::String     { string, .. } => string,
+            Token::Symbol     { string, .. } => string,
+            Token::Block {..} => ""
+        };
+    
+        write!(f, "{}", s)
+    }
+}
