@@ -94,3 +94,31 @@ impl<'t, 's> TypeKind<'t, 's> {
         }
     }
 }
+
+impl<'t, 's> PartialEq for TypeKind<'t, 's> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (TypeKind::Bool, TypeKind::Bool)   => true,
+            (TypeKind::Char, TypeKind::Char)   => true,
+            (TypeKind::Float, TypeKind::Float) => true,
+            (TypeKind::Int, TypeKind::Int)     => true,
+            (TypeKind::List(a), TypeKind::List(b)) => *a == *b,
+            (TypeKind::MutRef(a), TypeKind::MutRef(b)) => *a == *b,
+            (TypeKind::HigherOrder { name: n1, args: a1 },
+             TypeKind::HigherOrder { name: n2, args: a2 }) => {
+                if n1.to_string() == n2.to_string() && a1.len() == a2.len()  {
+                    for (t1, t2) in  a1.iter().zip(a2.iter()) {
+                        if t1 != t2 {
+                            return false
+                        }
+                    }
+
+                    true
+                } else {
+                    false
+                }
+            },
+            _ => false
+        }
+    }   
+}
