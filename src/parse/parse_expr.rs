@@ -113,7 +113,7 @@ fn parse_array<'s, 't>(contents: &'t [Token<'s>], pos: (usize, usize)) -> Result
     let mut values = Vec::new();
     let mut errors = Vec::new();
     
-    for (start, end) in Token::split_tokens(contents, |t| t.str_equals(",")) {
+    for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
         match parse_expression(&contents[start..end], pos) {
             Ok(expr) => values.push(expr),
             Err(ref mut es) => errors.append(es)
@@ -131,7 +131,7 @@ fn parse_array<'s, 't>(contents: &'t [Token<'s>], pos: (usize, usize)) -> Result
 fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     /* Parses an attribute resolution */
 
-    if tokens.len() < 3 || !tokens[tokens.len() - 2].str_equals(".") {
+    if tokens.len() < 3 || tokens[tokens.len() - 2].to_string() != "." {
         return None;
     }
 
@@ -178,7 +178,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     for operator_list in [comparison_operators, arithmetic_operators] {
         for op in operator_list {
             for i in 0..tokens.len() {
-                if tokens[i].str_equals(op) {
+                if tokens[i].to_string() == op {
                     let left = parse_expression(&tokens[..i], tokens[0].position());
                     let right = parse_expression(&tokens[i+1..], tokens[i+1].position());
     
@@ -207,7 +207,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         }
     }
 
-    if tokens[0].str_equals("-") && tokens.len() > 1 {
+    if tokens[0].to_string() == "-" && tokens.len() > 1 {
         Some(if let Ok(expr) = parse_expression(&tokens[1..], tokens[1].position()) {
             Ok(Expr {
                 expr_type: ExprType::Unary {
@@ -240,7 +240,7 @@ fn parse_funcall<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                 let mut exprs = Vec::new();
                 let mut errors = Vec::new();
 
-                let slices = Token::split_tokens(&contents[..], |t| t.str_equals(","));
+                let slices = Token::split_tokens(&contents[..], |t| t.to_string() == ",");
 
                 for (start, end) in slices {
                     match parse_expression(&contents[start..end], contents[start].position()) {

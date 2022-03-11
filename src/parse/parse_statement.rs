@@ -1,7 +1,7 @@
 use crate::{
     error::{ Error, ErrorKind },
     token::Token,
-    parse::{ Expr, ExprType, parse_expression, TypeKind }
+    parse::{ Expr, parse_expression, TypeKind }
 };
 
 #[derive(Debug)]
@@ -89,12 +89,9 @@ type ParseOption<'s, 't> = Option<Result<Statement<'s, 't>, Vec<Error>>>;
 fn parse_declare<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     /* Parses a value declaration */
 
-    let constant = if tokens[0].str_equals("let") {
-        true
-    } else if tokens[0].str_equals("var") {
-        false
-    } else {
-        return None;
+    let constant = match tokens[0].to_string().as_str() {
+        s@("let"|"var") => s == "let",
+        _ => return None
     };
 
     if tokens.len() < 4 {
@@ -113,7 +110,7 @@ fn parse_declare<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     let mut errors = Vec::new();
 
     for i in 0..tokens.len() {
-        if tokens[i].str_equals("=") {
+        if tokens[i].to_string() == "=" {
             match assign_index {
                 None => {
                     assign_index = Some(i);
@@ -130,7 +127,7 @@ fn parse_declare<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         }
     }
 
-    let value_type = if tokens[2].str_equals(":") {
+    let value_type = if tokens[2].to_string() == ":" {
         match TypeKind::from_tokens(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
             Ok(tp) => Some(tp),
             Err(ref mut es) => {
@@ -177,7 +174,7 @@ fn parse_assignment<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     loop {
         if eq_index >= tokens.len() {
             return None;
-        } else if tokens[eq_index].str_equals("=") {
+        } else if tokens[eq_index].to_string() == "=" {
             break;
         } else {
             eq_index += 1;
@@ -215,14 +212,9 @@ fn parse_conditional<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     let mut errors: Vec<Error> = Vec::new();
 
-    let condiitonal_type = if tokens[0].str_equals("if") {
-        "if"
-    } else if tokens[0].str_equals("elif") {
-        "elif"
-    } else if tokens[0].str_equals("while") {
-        "while"
-    } else {
-        return None
+    let conditional_type = match tokens[0].to_string().as_str() {
+        "if"|"elif"|"else" => tokens[0].to_string(),
+        _ => return None
     };
 
     let format_err = Error::new(ErrorKind::SyntaxError)
@@ -230,7 +222,7 @@ fn parse_conditional<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                         .set_message(
                             format!(
                                 "Expected syntax '{} (<condition>) {{<body>}}",
-                                condiitonal_type
+                                conditional_type
                             )
                         );
 
@@ -261,7 +253,7 @@ fn parse_conditional<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     Some(if !errors.is_empty() {
         Err(errors)
-    } else if condiitonal_type == "while" {
+    } else if conditional_type == "while" {
         Ok(Statement {
             stmt_type: StatementType::WhileLoop {
                 condition: condition.unwrap(),
@@ -275,7 +267,7 @@ fn parse_conditional<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
             stmt_type: StatementType::Conditional {
                 condition: condition.unwrap(),
                 block: block.unwrap(),
-                is_if: condiitonal_type == "if"
+                is_if: conditional_type == "if"
             },
             first_token: &tokens[0],
             last_token:  &tokens[2]
@@ -287,7 +279,7 @@ fn parse_conditional<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 fn parse_else<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     /* Parses an else statement */
 
-    if !tokens[0].str_equals("else") {
+    if tokens[0].to_string() != "else" {
         return None;
     }
 
@@ -325,7 +317,7 @@ fn parse_else<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 fn parse_for_loop<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     /* Parses a for loop */
 
-    if !tokens[0].str_equals("for") {
+    if tokens[0].to_string() != "for" {
         return None;
     }
 
@@ -363,7 +355,7 @@ fn parse_for_loop<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     let mut errors = Vec::new();
 
-    if errors.is_empty() && !inner_tokens[1].str_equals("in") {
+    if errors.is_empty() && inner_tokens[1].to_string() != "in" {
         errors.push(format_err);
     }
 
@@ -399,7 +391,7 @@ fn parse_for_loop<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 fn parse_return<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     /* Parses a return value */
 
-    if !tokens[0].str_equals("return") {
+    if tokens[0].to_string() == "return" {
         return None;
     }
 
@@ -454,7 +446,7 @@ pub fn parse_block<'s, 't>(tokens: &'t [Token<'s>]) -> Result<Vec<Statement<'s, 
     let mut statements = Vec::new();
     let mut errors = Vec::new();
 
-    let slices = Token::split_tokens(tokens, |t| t.str_equals(";") || t.delim_equals("{"));
+    let slices = Token::split_tokens(tokens, |t| t.to_string() == ";" || t.delim_equals("{"));
 
     for (i, (start, mut end)) in slices.iter().enumerate() {
         if i + 1 == slices.len() {
