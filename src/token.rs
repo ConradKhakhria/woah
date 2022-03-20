@@ -27,20 +27,8 @@ pub enum Token<'s> {
     }
 }
 
+
 impl<'s> Token<'s> {
-    pub fn str_equals(&self, s: &str) -> bool {
-        /* Returns whether the token's string is equal to a supplied string */
-
-        match self {
-            Token::Identifier    { string, .. } => *string == s,
-            Token::Number        { string, .. } => *string == s,
-            Token::String        { string, .. } => *string == s,
-            Token::Symbol        { string, .. } => *string == s,
-            _ => false
-        }
-    }
-
-
     pub fn delim_equals(&self, s: &str) -> bool {
         /* Returns whether the block's delimiter is equal to a supplied string */
 
@@ -114,7 +102,7 @@ impl<'s> std::fmt::Display for Token<'s> {
             Token::Number     { string, .. } => string,
             Token::String     { string, .. } => string,
             Token::Symbol     { string, .. } => string,
-            Token::Block {..} => ""
+            Token::Block      {..} => ""
         };
     
         write!(f, "{}", s)
