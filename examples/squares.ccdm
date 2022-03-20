@@ -1,5 +1,12 @@
-fn main(args: []str) {
-    for i in 0 : 100 {
-        println("{i}");
-    }
-}
+fn square(x: int): int
+    waitms(100 * x)
+
+    return x**2
+
+fn main(env: Env)
+    var squares = []
+
+    pool for i in 1 : 20
+        squares.push(square(i))
+
+    env.io.println(squares)
