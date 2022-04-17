@@ -278,7 +278,6 @@ impl<'s, 't> Function<'s, 't> {
 
         index += 1;
 
-
         let function_body = Self::parse_function_body(&tokens[index])
                                 .map_err(|ref mut es| errors.append(es));
 
