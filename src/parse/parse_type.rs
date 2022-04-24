@@ -15,6 +15,8 @@ pub enum TypeKind<'s, 't> {
 
     Bool,
 
+    ObjSelf,
+
     MutRef(Box<TypeKind<'s, 't>>),
 
     List(Box<TypeKind<'s, 't>>),
@@ -98,10 +100,11 @@ impl<'s, 't> TypeKind<'s, 't> {
 impl<'s, 't> PartialEq for TypeKind<'s, 't> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TypeKind::Bool, TypeKind::Bool)   => true,
-            (TypeKind::Char, TypeKind::Char)   => true,
-            (TypeKind::Float, TypeKind::Float) => true,
-            (TypeKind::Int, TypeKind::Int)     => true,
+            (TypeKind::Bool, TypeKind::Bool)       => true,
+            (TypeKind::Char, TypeKind::Char)       => true,
+            (TypeKind::Float, TypeKind::Float)     => true,
+            (TypeKind::Int, TypeKind::Int)         => true,
+            (TypeKind::ObjSelf, TypeKind::ObjSelf) => true,
             (TypeKind::List(a), TypeKind::List(b)) => *a == *b,
             (TypeKind::MutRef(a), TypeKind::MutRef(b)) => *a == *b,
             (TypeKind::HigherOrder { name: n1, args: a1 },
