@@ -1,7 +1,10 @@
+mod parse_class;
 mod parse_expr;
 mod parse_function;
 mod parse_statement;
 mod parse_type;
+
+pub use parse_class::Class as Class;
 
 pub use parse_expr::Expr as Expr;
 pub use parse_expr::ExprType as ExprType;

@@ -121,9 +121,16 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
             }
         }
 
-        match Argument::from_tokens(&args_block[prev..index]) {
-            Ok(arg) => args.push(arg),
-            Err(ref mut es) => errors.append(es)
+        if prev == 0 && index == 1 && args_block[0].to_string() == "self" {
+            args.push(Argument {
+                arg_name: &args_block[0],
+                arg_type: TypeKind::ObjSelf
+            });
+        } else {
+            match Argument::from_tokens(&args_block[prev..index]) {
+                Ok(arg) => args.push(arg),
+                Err(ref mut es) => errors.append(es)
+            }
         }
 
         index += 1;
