@@ -8,5 +8,6 @@ pub use parse_expr::parse_expression as parse_expression;
 
 pub use parse_statement::Statement as Statement;
 pub use parse_statement::StatementType as StatementType;
+pub use parse_statement::parse_statement_block as parse_statement_block;
 
 pub use parse_type::TypeKind as TypeKind;
