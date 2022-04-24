@@ -95,6 +95,7 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
                 )
             }
         }
+        Token::NewlineIndent(_) => unreachable!()
     };
 
     Some(Ok(
