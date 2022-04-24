@@ -1,5 +1,5 @@
 [package]
-name = "woah"
+name = "ccdm"
 version = "0.1.0"
 authors = ["Conrad Khakhria <conradjkhakhria@gmail.com>"]
 edition = "2018"
