@@ -317,7 +317,7 @@ pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str, pos: (usize, usize))
 }
 
 
-fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) {
+fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) -> Result<(), Vec<Error>> {
     /* Sets the newline step to 1 in each token */
 
     let mut newline_step = 0; // will always be a step of one
@@ -332,16 +332,23 @@ fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) {
     }
 
     if newline_step == 0 {
-        return;
+        return Ok(());
     }
 
     for token in tokens.iter_mut() {
         if let Token::NewlineIndent(indent) = token {
             if *indent % newline_step == 0 {
                 *indent /= newline_step;
+            } else {
+                return Error::new(ErrorKind::SyntaxError)
+                        .set_position(token.position())
+                        .set_message("Indentation doesn't match the step of previous indentation levels")
+                        .into();
             }
         }
     }
+
+    Ok(())
 }
 
 
