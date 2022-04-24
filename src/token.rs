@@ -308,7 +308,8 @@ pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str, pos: (usize, usize))
             }
 
             remove_duplicate_newlines(contents);
-            adjust_newline_step(contents);
+
+            adjust_newline_step(contents)?;
 
             Ok(contents.clone())
         },
