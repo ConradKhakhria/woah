@@ -1,12 +1,6 @@
-fn square(x: int): int
-    waitms(100 * x)
+obj main
+    fn main(env: Env)
+        for i in 0 : 10
+            env.println(i)
 
-    return x**2
-
-fn main(env: Env)
-    var squares = []
-
-    pool for i in 1 : 20
-        squares.push(square(i))
-
-    env.io.println(squares)
+        env.println("done")
