@@ -29,21 +29,21 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let tokens = token::tokenise(&source, &filename, (1, 1))?;
     let lines = line::create_lines(&tokens);
 
-    let mut functions = vec![];
+    let mut classes = vec![];
     let mut errors = vec![];
 
     for line in lines.iter() {
-        match parse::Function::from_line(line) {
-            Ok(func) => functions.push(func),
+        match parse::Class::new(line) {
+            Ok(class) => classes.push(class),
             Err(ref mut es) => errors.append(es)
         }
     }
 
-    if errors.len() > 0 {
-        return Err(errors)
+    if errors.is_empty() {
+        return Err(errors);
     }
 
-    println!("{:#?}", functions);
+    
 
     Ok(())
 }
