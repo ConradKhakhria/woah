@@ -122,4 +122,3 @@ impl<'s, 't> Field<'s, 't> {
         Ok((Field { field_name, field_type }, offset == 1))
     }
 }
-
