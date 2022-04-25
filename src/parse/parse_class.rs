@@ -17,7 +17,7 @@ pub struct Class<'s, 't> {
 
 
 impl<'s, 't> Class<'s, 't> {
-    pub fn new
+    pub fn new()
 }
 
 
