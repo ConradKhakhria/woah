@@ -47,7 +47,12 @@ impl<'s, 't> Class<'s, 't> {
         let mut private_methods = vec![];
 
         for line in line.line_derivs.iter() {
-            if vec!["def", "pub"].contains(&&line.line_tokens[0].to_string()[..]) {
+            if line.line_tokens.len() < 3 {
+                errors.push(Error::new(ErrorKind::SyntaxError)
+                                .set_position(line.line_tokens[0].position())
+                                .set_message("Unrecognised syntax in class defintion")
+                                .into());
+            } else if line.line_tokens[0].to_string() == "def" || line.line_tokens[1].to_string() == "def" {
                 match Function::from_line(line) {
                     Ok(f) => {
                         if f.public {
@@ -117,7 +122,7 @@ impl<'s, 't> Field<'s, 't> {
                         .into();
         }
 
-        let field_type = TypeKind::from_tokens(&tokens[2..])?;
+        let field_type = TypeKind::from_tokens(&tokens[2 + offset..])?;
 
         Ok((Field { field_name, field_type }, offset == 1))
     }
