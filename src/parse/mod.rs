@@ -5,6 +5,7 @@ mod parse_statement;
 mod parse_type;
 
 pub use parse_class::Class as Class;
+pub use parse_class::Field as Field;
 
 pub use parse_expr::Expr as Expr;
 pub use parse_expr::ExprType as ExprType;
