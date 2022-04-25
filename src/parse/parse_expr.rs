@@ -44,9 +44,9 @@ pub enum ExprType<'s, 't> {
 
 #[derive(Debug)]
 pub struct Expr<'s, 't> {
-    expr_type: ExprType<'s, 't>,
-    first_token: &'t Token<'s>,
-    last_token: &'t Token<'s>
+    pub expr_type: ExprType<'s, 't>,
+    pub first_token: &'t Token<'s>,
+    pub last_token: &'t Token<'s>
 }
 
 
