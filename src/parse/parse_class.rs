@@ -1,12 +1,14 @@
 use crate::{
     error::{ Error, ErrorKind },
-    token::Token,
+    line::Line,
     parse::{
         Function,
         TypeKind
-    }
+    },
+    token::Token,
 };
 
+#[derive(Debug)]
 pub struct Class<'s, 't> {
     pub name: &'t Token<'s>,
     pub public_fields: Vec<Field<'s, 't>>,
@@ -17,7 +19,73 @@ pub struct Class<'s, 't> {
 
 
 impl<'s, 't> Class<'s, 't> {
-    pub fn new()
+    pub fn new(line: &Line<'s, 't>) -> Result<Class<'s, 't>, Vec<Error>> {
+        /* Parses a class from a nested Line */
+
+        let tokens = line.line_tokens;
+        let mut errors = vec![];
+
+        if tokens.len() != 2 || tokens[0].to_string() != "obj" {
+            return Error::new(ErrorKind::SyntaxError)
+                        .set_position(tokens[0].position())
+                        .set_message("invalid class definition syntax")
+                        .into();
+        }
+
+        let name = &tokens[0];
+
+        if let Token::Identifier {..} = name {} else {
+            errors.push(Error::new(ErrorKind::SyntaxError)
+                            .set_position(name.position())
+                            .set_message("Expected class name")
+                            .into());
+        }
+
+        let mut public_fields = vec![];
+        let mut private_fields = vec![];
+        let mut public_methods = vec![];
+        let mut private_methods = vec![];
+
+        for line in line.line_derivs.iter() {
+            if vec!["def", "pub"].contains(&&line.line_tokens[0].to_string()[..]) {
+                match Function::from_line(line) {
+                    Ok(f) => {
+                        if f.public {
+                            public_methods.push(f);
+                        } else {
+                            private_methods.push(f);
+                        }
+                    },
+
+                    Err(ref mut es) => errors.append(es)
+                }
+            } else {
+                match Field::from_tokens(&line.line_tokens) {
+                    Ok((field, public)) => {
+                        if public {
+                            public_fields.push(field);
+                        } else {
+                            private_fields.push(field);
+                        }
+                    },
+
+                    Err(ref mut es) => errors.append(es)
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(Class {
+                name,
+                public_fields,
+                private_fields,
+                public_methods,
+                private_methods
+            })
+        } else {
+            Err(errors)
+        }
+    }
 }
 
 
