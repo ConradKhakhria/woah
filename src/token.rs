@@ -33,7 +33,7 @@ pub enum Token<'s> {
     NewlineIndent(usize)
 }
 
-
+#[allow(dead_code)]
 impl<'s> Token<'s> {
     /* User interface */
 
