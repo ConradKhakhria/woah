@@ -7,6 +7,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Function<'s, 't> {
+    pub public: bool,
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
     pub return_type: Option<TypeKind<'s, 't>>,
@@ -25,13 +26,15 @@ impl<'s, 't> Function<'s, 't> {
                                     .set_position(tokens[0].position())
                                     .set_message("Invalid function definition syntax");
 
-        if tokens.len() < 3 || tokens[0].to_string() != "def" || line.line_derivs.is_empty() {
+        let offset = if tokens[0].to_string() == "pub" { 1 } else { 0 };
+
+        if tokens.len() < 3 + offset || tokens[offset].to_string() != "def" || line.line_derivs.is_empty() {
             errors.push(format_error.clone());
         }
 
         /* Get function name */
 
-        let name = &tokens[1];
+        let name = &tokens[1 + offset];
 
         if let Token::Identifier {..} = name {
             // ok
@@ -41,7 +44,7 @@ impl<'s, 't> Function<'s, 't> {
 
         /* Get function arguments */
 
-        let mut arguments = parse_arguments(&tokens[2]);
+        let mut arguments = parse_arguments(&tokens[2 + offset]);
 
         if let Err(ref mut es) = arguments {
             errors.append(es);
@@ -49,8 +52,8 @@ impl<'s, 't> Function<'s, 't> {
 
         /* Get function return type */
 
-        let return_type = if tokens.len() > 3 {
-            match TypeKind::from_tokens(&tokens[3..]) {
+        let return_type = if tokens.len() > 3 + offset {
+            match TypeKind::from_tokens(&tokens[3 + offset..]) {
                 Ok(tp) => Some(tp),
     
                 Err(ref mut es) => {
@@ -72,6 +75,7 @@ impl<'s, 't> Function<'s, 't> {
 
         if errors.is_empty() {
             Ok(Function {
+                public: offset == 1,
                 name,
                 args: arguments.unwrap(),
                 return_type,
