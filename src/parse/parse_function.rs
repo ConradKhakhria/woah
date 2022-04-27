@@ -4,13 +4,14 @@ use crate::{
     parse::{ parse_statement_block, Statement, TypeKind },
     token::Token
 };
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Function<'s, 't> {
     pub public: bool,
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
-    pub return_type: Option<TypeKind<'s, 't>>,
+    pub return_type: Option<Rc<TypeKind<'s, 't>>>,
     pub body: Vec<Statement<'s, 't>>
 }
 
@@ -54,7 +55,7 @@ impl<'s, 't> Function<'s, 't> {
 
         let return_type = if tokens.len() > 3 + offset {
             match TypeKind::from_tokens(&tokens[3 + offset..]) {
-                Ok(tp) => Some(tp),
+                Ok(tp) => Some(Rc::new(tp)),
     
                 Err(ref mut es) => {
                     errors.append(es);
