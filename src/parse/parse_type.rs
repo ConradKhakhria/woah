@@ -26,6 +26,11 @@ pub enum TypeKind<'s, 't> {
     HigherOrder {
         name: &'t Token<'s>,
         args: Vec<TypeKind<'s, 't>>
+    },
+
+    Function {
+        args: Vec<TypeKind<'s, 't>>,
+        return_type: Box<TypeKind<'s, 't>>
     }
 }
 
@@ -77,6 +82,35 @@ impl<'s, 't> TypeKind<'s, 't> {
                             .into()
                 }
             },
+
+            [Token::Block { open_delim: "(", contents, ..}, _, _, .. ] => {
+                let mut errors = vec![];
+
+                let mut return_type = TypeKind::from_tokens(&tokens[2..]);
+
+                if let Err(ref mut es) = return_type {
+                    errors.append(es);
+                }
+
+                let arg_type_slice = Token::split_tokens(&contents[..], |t| t.to_string() == ",");
+                let mut arg_types = vec![];
+
+                for (start, end) in arg_type_slice {
+                    match TypeKind::from_tokens(&contents[start..end]) {
+                        Ok(tp) => arg_types.push(tp),
+                        Err(ref mut es) => errors.append(es)
+                    }
+                }
+
+                if errors.is_empty() {
+                    Ok(TypeKind::Function {
+                        args: arg_types,
+                        return_type: Box::new(return_type.unwrap())
+                    })
+                } else {
+                    Err(errors)
+                }
+            }
 
             [Token::Symbol { string, .. }, ..] => {
                 if *string == "@" {
