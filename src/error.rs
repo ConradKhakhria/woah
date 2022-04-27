@@ -9,7 +9,8 @@ pub struct Error {
 
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorKind {
-    SyntaxError
+    SyntaxError,
+    TypeError
 }
 
 impl std::fmt::Display for Error {
@@ -66,7 +67,8 @@ impl<T> Into<Result<T, Vec<Error>>> for Error {
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
-            ErrorKind::SyntaxError  => "Syntax Error"
+            ErrorKind::SyntaxError => "Syntax Error",
+            ErrorKind::TypeError   => "Type Error"
         })
     }
 }
