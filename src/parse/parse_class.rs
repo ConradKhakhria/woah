@@ -7,8 +7,11 @@ use crate::{
     },
     token::Token,
 };
-
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    string::ToString
+};
 
 #[derive(Debug)]
 pub struct Class<'s, 't> {
@@ -93,13 +96,70 @@ impl<'s, 't> Class<'s, 't> {
             Err(errors)
         }
     }
+
+
+    pub fn attribute_type<T: ToString>(&self, attribute_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+        /* Gets the type of a public or private attribute */
+
+        if let Some(tp) = self.field_type(attribute_name) {
+            Some(tp)
+        } else if let Some(tp) = self.method_type(attribute_name) {
+            Some(tp)
+        } else {
+            None
+        }
+    }
+
+
+    pub fn field_type<T: ToString>(&self, field_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+        /* Returns the type of a public or private field */
+
+        for field_collection in vec![ &self.public_fields, &self.private_fields ].iter() {
+            for field in field_collection.iter() {
+                if field.field_name.to_string() == field_name.to_string() {
+                    return Some(Rc::clone(&field.field_type))
+                }
+            }
+        }
+
+        None
+    }
+
+
+    pub fn method_type<T: ToString>(&self, method_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+        /* Returns the type of a method */
+
+        for method_collection in vec![ &self.public_methods, &self.private_methods ].iter() {
+            for method in method_collection.iter() {
+                if method.name.to_string() == method_name.to_string() {
+                    let mut args = vec![];
+
+                    for arg in method.args.iter() {
+                        args.push(Rc::clone(&arg.arg_type));
+                    }
+
+                    return Some(Rc::new(
+                        TypeKind::Function {
+                            args,
+                            return_type: match &method.return_type {
+                                Some(tp) => Some(Rc::clone(tp)),
+                                None => None
+                            }
+                        }
+                    ))
+                }
+            }
+        }
+
+        None
+    }
 }
 
 
 #[derive(Debug)]
 pub struct Field<'s, 't> {
     pub field_name: &'t Token<'s>,
-    pub field_type: TypeKind<'s, 't>
+    pub field_type: Rc<TypeKind<'s, 't>>
 }
 
 impl<'s, 't> Field<'s, 't> {
@@ -124,7 +184,7 @@ impl<'s, 't> Field<'s, 't> {
                         .into();
         }
 
-        let field_type = TypeKind::from_tokens(&tokens[2 + offset..])?;
+        let field_type = Rc::new(TypeKind::from_tokens(&tokens[2 + offset..])?);
 
         Ok((Field { field_name, field_type }, offset == 1))
     }
