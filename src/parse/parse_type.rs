@@ -2,6 +2,7 @@ use crate::{
     error::{ Error, ErrorKind },
     token::Token
 };
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum TypeKind<'s, 't> {
@@ -19,18 +20,18 @@ pub enum TypeKind<'s, 't> {
 
     EmptyList,
 
-    MutRef(Box<TypeKind<'s, 't>>),
+    MutRef(Rc<TypeKind<'s, 't>>),
 
-    List(Box<TypeKind<'s, 't>>),
+    List(Rc<TypeKind<'s, 't>>),
 
     HigherOrder {
         name: &'t Token<'s>,
-        args: Vec<TypeKind<'s, 't>>
+        args: Vec<Rc<TypeKind<'s, 't>>>
     },
 
     Function {
-        args: Vec<TypeKind<'s, 't>>,
-        return_type: Box<TypeKind<'s, 't>>
+        args: Vec<Rc<TypeKind<'s, 't>>>,
+        return_type: Option<Rc<TypeKind<'s, 't>>>
     }
 }
 
@@ -56,7 +57,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 
                 for i in 1..tokens.len() {
                     match TypeKind::from_tokens(&tokens[i..=i]) {
-                        Ok(tp) => args.push(tp),
+                        Ok(tp) => args.push(Rc::new(tp)),
                         Err(ref mut es) => errors.append(es)
                     }
                 }
@@ -71,7 +72,7 @@ impl<'s, 't> TypeKind<'s, 't> {
             [Token::Block { open_delim, contents, ..}] => {
                 match *open_delim {
                     "[" => Ok(TypeKind::List(
-                        Box::new(TypeKind::from_tokens(&contents[..])?)
+                        Rc::new(TypeKind::from_tokens(&contents[..])?)
                     )),
 
                     "(" => TypeKind::from_tokens(&contents[..]),
@@ -92,12 +93,28 @@ impl<'s, 't> TypeKind<'s, 't> {
                     errors.append(es);
                 }
 
+                let mut return_type = match &tokens[2] {
+                    Token::Block { open_delim: "(", contents, .. } => {
+                        if contents.len() == 0 {
+                            Ok(None)
+                        } else {
+                            TypeKind::from_tokens(&tokens[2..]).map(|t| Some(Rc::new(t)))
+                        }
+                    }
+
+                    _ => TypeKind::from_tokens(&tokens[2..]).map(|t| Some(Rc::new(t)))
+                };
+
+                if let Err(ref mut es) = return_type {
+                    errors.append(es);
+                }
+
                 let arg_type_slice = Token::split_tokens(&contents[..], |t| t.to_string() == ",");
                 let mut arg_types = vec![];
 
                 for (start, end) in arg_type_slice {
                     match TypeKind::from_tokens(&contents[start..end]) {
-                        Ok(tp) => arg_types.push(tp),
+                        Ok(tp) => arg_types.push(Rc::new(tp)),
                         Err(ref mut es) => errors.append(es)
                     }
                 }
@@ -105,7 +122,7 @@ impl<'s, 't> TypeKind<'s, 't> {
                 if errors.is_empty() {
                     Ok(TypeKind::Function {
                         args: arg_types,
-                        return_type: Box::new(return_type.unwrap())
+                        return_type: return_type.unwrap()
                     })
                 } else {
                     Err(errors)
@@ -115,7 +132,7 @@ impl<'s, 't> TypeKind<'s, 't> {
             [Token::Symbol { string, .. }, ..] => {
                 if *string == "@" {
                     Ok(TypeKind::MutRef(
-                        Box::new(TypeKind::from_tokens(&tokens[1..])?)
+                        Rc::new(TypeKind::from_tokens(&tokens[1..])?)
                     ))
                 } else {
                     Error::new(ErrorKind::SyntaxError)
