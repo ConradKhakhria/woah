@@ -129,7 +129,7 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
         if prev == 0 && index == 1 && args_block[0].to_string() == "self" {
             args.push(Argument {
                 arg_name: &args_block[0],
-                arg_type: TypeKind::ObjSelf
+                arg_type: Rc::new(TypeKind::ObjSelf)
             });
         } else {
             match Argument::from_tokens(&args_block[prev..index]) {
@@ -152,7 +152,7 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
 #[derive(Debug)]
 pub struct Argument<'s, 't> {
     pub arg_name: &'t Token<'s>,
-    pub arg_type: TypeKind<'s, 't>
+    pub arg_type: Rc<TypeKind<'s, 't>>
 }
 
 impl<'s, 't> Argument<'s, 't> {
@@ -175,7 +175,7 @@ impl<'s, 't> Argument<'s, 't> {
                         .into();
         }
 
-        let arg_type = TypeKind::from_tokens(&tokens[2..])?;
+        let arg_type = Rc::new(TypeKind::from_tokens(&tokens[2..])?);
 
         Ok(Argument { arg_name, arg_type })
     }
