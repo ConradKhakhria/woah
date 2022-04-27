@@ -8,6 +8,8 @@ use crate::{
     token::Token,
 };
 
+use std::{collections::HashMap, hash::Hash};
+
 #[derive(Debug)]
 pub struct Class<'s, 't> {
     pub name: &'t Token<'s>,
@@ -125,5 +127,32 @@ impl<'s, 't> Field<'s, 't> {
         let field_type = TypeKind::from_tokens(&tokens[2 + offset..])?;
 
         Ok((Field { field_name, field_type }, offset == 1))
+    }
+}
+
+pub fn collect_classes<'s, 't>(lines: &Vec<Line<'s, 't>>) -> Result<HashMap<String, Class<'s, 't>>, Vec<Error>> {
+    /* Creates a map of all the classes in a program, for use in later compilation */
+
+    let mut classes = HashMap::new();
+    let mut errors = vec![];
+
+    // for now, this will always land on a new class when imports are integrated,
+    // this will have to deal with them too (but modules are just like classes anyway) 
+    for line in lines {
+        match Class::new(line) {
+            Ok(c) => {
+                classes.insert(c.name.to_string(), c);
+            }
+
+            Err(ref mut es) => {
+                errors.append(es)
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(classes)
+    } else {
+        Err(errors)
     }
 }
