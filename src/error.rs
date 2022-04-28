@@ -9,6 +9,7 @@ pub struct Error {
 
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorKind {
+    NameError,
     SyntaxError,
     TypeError
 }
@@ -39,6 +40,17 @@ impl std::fmt::Display for Error {
 }
 
 
+macro_rules! collect_errors {
+    ($result:expr, $errors:expr) => {
+        if let Err(ref mut es) = $result {
+            $errors.append(es);
+        }
+    };
+}
+
+pub(crate) use collect_errors;
+
+
 /* Conversions */
 
 impl Into<Vec<Error>> for Error {
@@ -67,6 +79,7 @@ impl<T> Into<Result<T, Vec<Error>>> for Error {
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
+            ErrorKind::NameError   => "Name Error",
             ErrorKind::SyntaxError => "Syntax Error",
             ErrorKind::TypeError   => "Type Error"
         })
