@@ -179,3 +179,49 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
         }
     }   
 }
+
+impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string: String = match self {
+            TypeKind::Bool      => "bool".into(),
+            TypeKind::Char      => "char".into(),
+            TypeKind::EmptyList => "<empty list>".into(),
+            TypeKind::Float     => "float".into(),
+            TypeKind::Function { args, return_type } => {
+                let mut string = String::from("(");
+
+                for arg in args.iter() {
+                    string = format!("{}{}, ", string, arg);
+                }
+
+                string = format!(
+                    "{} -> {}",
+                    &string[..string.len()-2],
+                    if let Some(tp) = return_type {
+                        tp.to_string()
+                    } else {
+                        String::from("()")
+                    }
+                );
+
+                string
+            },
+            TypeKind::HigherOrder { name, args} => {
+                let mut string = String::from(name.to_string());
+
+                for arg in args.iter() {
+                    string = format!("{} {}", string, arg);
+                }
+
+                string
+            },
+            TypeKind::Int => "int".into(),
+            TypeKind::List(t) => format!("[]{}", t),
+            TypeKind::MutRef(t) => format!("@{}", t),
+            TypeKind::ObjSelf => format!("<Self>"),
+            TypeKind::String => "str".into()
+        };
+
+        write!(f, "{}", string)
+    }
+}
