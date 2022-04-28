@@ -37,7 +37,9 @@ pub enum ExprType<'s, 't> {
 
     String,
 
-    Number,
+    Integer,
+
+    Float,
 
     Identifier,
 }
@@ -64,7 +66,13 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
 
     let expr_type = match &tokens[0] {
         Token::Identifier {..} => ExprType::Identifier,
-        Token::Number {..} => ExprType::Number,
+        Token::Number { string, ..} => {
+            if string.contains(".") {
+                ExprType::Float
+            } else {
+                ExprType::Integer
+            }
+        },
         Token::String {..} => ExprType::String,
         Token::Symbol { string, .. } => {
             return Some(
