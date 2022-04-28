@@ -1,3 +1,4 @@
+mod check;
 mod error;
 mod line;
 mod parse;
@@ -28,22 +29,16 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let source = std::fs::read_to_string(&filename).unwrap();
     let tokens = token::tokenise(&source, &filename, (1, 1))?;
     let lines = line::create_lines(&tokens);
+    let classes = parse::collect_classes(&lines)?;
+    let typechecker = check::TypeChecker::new(classes);
 
-    let mut classes = vec![];
-    let mut errors = vec![];
+    /* Obtain an expression */
 
-    for line in lines.iter() {
-        match parse::Class::new(line) {
-            Ok(class) => classes.push(class),
-            Err(ref mut es) => errors.append(es)
-        }
-    }
+    let expr_string = "1 + 2 + 3";
+    let expr_tokens = token::tokenise(&expr_string, &"<hi>", (1, 1))?;
+    let expr = parse::parse_expression(&expr_tokens, (1, 1))?;
 
-    if errors.is_empty() {
-        return Err(errors);
-    }
-
-    
+    println!("{:#?}", check::determine_expr_type(&expr, &typechecker));
 
     Ok(())
 }
