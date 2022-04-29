@@ -160,7 +160,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
                                 .into()
         };
 
-        match class.attribute_type(attr_name, &self.current_class) {
+        match class.attribute_type(attr_name, &self.current_class()) {
             Some(tp) => Ok(tp),
             None => Error::new(ErrorKind::TypeError)
                         .set_position(attr_name.position())
