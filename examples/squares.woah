@@ -1,6 +1,6 @@
 obj main
     def main(env: Env)
-        for i in 0 : 10
+        for i in [1, 2, 3, 4, 5]
             env.println(i)
 
         env.println("done")
