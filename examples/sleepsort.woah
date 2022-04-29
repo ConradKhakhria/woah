@@ -1,0 +1,17 @@
+obj SleepSort
+    def sort(xs: [int]) [int]
+        var results: [int] = []
+
+        pool for x in xs
+            waitms(x)
+            results.push(x)
+
+        return results
+
+
+obj Main
+    def main(env: Env)
+        let xs     = [6, 7, 1, 4, 2, 3, 4, 9]
+        let sorted = SleepSort.sort(xs)
+
+        env.println(sorted)
