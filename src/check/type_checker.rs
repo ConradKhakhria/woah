@@ -8,9 +8,9 @@ use crate::{
 use std::collections::HashMap;
 
 pub struct TypeChecker<'s, 't> {
-    classes: HashMap<String, Class<'s, 't>>,
-    current_class: String,
-    current_scope: Vec<(String, TypeKind<'s, 't>)>
+    pub classes: HashMap<String, Class<'s, 't>>,
+    pub current_class: String,
+    pub current_scope: Vec<(String, TypeKind<'s, 't>)>
 }
 
 impl<'s, 't> TypeChecker<'s, 't> {
