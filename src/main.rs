@@ -38,7 +38,7 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let expr_tokens = token::tokenise(&expr_string, &"<hi>", (1, 1))?;
     let expr = parse::parse_expression(&expr_tokens, (1, 1))?;
 
-    println!("{:#?}", check::determine_expr_type(&expr, &typechecker));
+    println!("{:#?}", typechecker.check_expr_type(&expr));
 
     Ok(())
 }
