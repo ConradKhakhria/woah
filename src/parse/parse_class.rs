@@ -98,12 +98,12 @@ impl<'s, 't> Class<'s, 't> {
     }
 
 
-    pub fn attribute_type<T: ToString>(&self, attribute_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+    pub fn attribute_type<T: ToString>(&self, attribute_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
         /* Gets the type of a public or private attribute */
 
-        if let Some(tp) = self.field_type(attribute_name) {
+        if let Some(tp) = self.field_type(attribute_name, self_name) {
             Some(tp)
-        } else if let Some(tp) = self.method_type(attribute_name) {
+        } else if let Some(tp) = self.method_type(attribute_name, self_name) {
             Some(tp)
         } else {
             None
@@ -111,10 +111,16 @@ impl<'s, 't> Class<'s, 't> {
     }
 
 
-    pub fn field_type<T: ToString>(&self, field_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+    pub fn field_type<T: ToString>(&self, field_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
         /* Returns the type of a public or private field */
 
-        for field_collection in vec![ &self.public_fields, &self.private_fields ].iter() {
+        let available_fields = if self_name == self.name.to_string() {
+            vec![ &self.private_fields, &self.public_fields ]
+        } else {
+            vec![ &self.public_fields ]
+        };
+
+        for field_collection in available_fields.iter() {
             for field in field_collection.iter() {
                 if field.field_name.to_string() == field_name.to_string() {
                     return Some(Rc::clone(&field.field_type))
@@ -126,10 +132,16 @@ impl<'s, 't> Class<'s, 't> {
     }
 
 
-    pub fn method_type<T: ToString>(&self, method_name: &T) -> Option<Rc<TypeKind<'s, 't>>> {
+    pub fn method_type<T: ToString>(&self, method_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
         /* Returns the type of a method */
 
-        for method_collection in vec![ &self.public_methods, &self.private_methods ].iter() {
+        let available_methods = if self_name == self.name.to_string() {
+            vec![ &self.private_methods, &self.public_methods ]
+        } else {
+            vec![ &self.public_methods ]
+        };
+
+        for method_collection in available_methods.iter() {
             for method in method_collection.iter() {
                 if method.name.to_string() == method_name.to_string() {
                     let mut args = vec![];
