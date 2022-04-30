@@ -192,7 +192,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     for operator_list in [comparison_operators, arithmetic_operators] {
         for op in operator_list {
-            for i in 0..tokens.len() {
+            for i in 1..(tokens.len() - 1) {
                 if tokens[i].to_string() == op {
                     let left = parse_expression(&tokens[..i], tokens[0].position());
                     let right = parse_expression(&tokens[i+1..], tokens[i+1].position());
