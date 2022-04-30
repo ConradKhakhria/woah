@@ -38,15 +38,40 @@ pub enum TypeKind<'s, 't> {
 impl<'s, 't> TypeKind<'s, 't> {
     /* Initialisation */
 
-    fn parse_head_block_type(open_delim: &str, contents: &'t Vec<Token<'s>>, rest: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
+    fn parse_head_block_type(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
         /* Parses a type which begins with a bracketed block */
 
-        match open_delim {
-            "[" => Ok(TypeKind::List(Rc::new(
-                Self::from_tokens(rest)?
-            ))),
+        match tokens {
+            [Token::Block { open_delim: "[", contents, .. }, rest @ .. ] => {
+                if rest.is_empty() {
+                    Error::new(ErrorKind::SyntaxError)
+                        .set_position(tokens[0].position())
+                        .set_message("Unrecognised type '[]'")
+                        .into()
+                } else if !contents.is_empty() {
+                    Error::new(ErrorKind::SyntaxError)
+                        .set_position(contents[0].position())
+                        .set_message("List types must have the syntax []<type>")
+                        .into()
+                } else {
+                    Ok(TypeKind::List(Rc::new(
+                        Self::from_tokens(rest)?
+                    )))
+                }
+            },
+
+            [Token::Block { open_delim: "(", contents, .. }] => {
+                if contents.is_empty() {
+                    Error::new(ErrorKind::SyntaxError)
+                            .set_position(tokens[0].position())
+                            .set_message("unrecognised type '()'")
+                            .into()   
+                } else {
+                    TypeKind::from_tokens(&contents[..])
+                }
+            },
         
-            "(" => {
+            [Token::Block { open_delim: "(", contents, .. }, rest @ .. ] => {
                 let mut errors = vec![];
 
                 let mut return_type = match &rest[1..] {
@@ -86,7 +111,7 @@ impl<'s, 't> TypeKind<'s, 't> {
             }
         
             _ => Error::new(ErrorKind::SyntaxError)
-                        .set_position(contents[0].position())
+                        .set_position(tokens[0].position())
                         .set_message("unrecognised syntax in type annotation")
                         .into()
         }
@@ -166,8 +191,8 @@ impl<'s, 't> TypeKind<'s, 't> {
                 TypeKind::from_tokens(&contents[..])
             },
 
-            [Token::Block { open_delim, contents, ..}, rest @ .. ] => {
-                TypeKind::parse_head_block_type(open_delim, contents, rest)
+            [Token::Block {..}, .. ] => {
+                TypeKind::parse_head_block_type(tokens)
             }
 
             [Token::Symbol { string, .. }, ..] => {
@@ -242,7 +267,7 @@ impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
                 let mut string = String::from(name.to_string());
 
                 for arg in args.iter() {
-                    string = format!("{} {}", string, arg);
+                    string = format!("{} ({})", string, arg);
                 }
 
                 string
