@@ -9,6 +9,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct Function<'s, 't> {
     pub public: bool,
+    pub object_method: bool,
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
     pub return_type: Option<Rc<TypeKind<'s, 't>>>,
@@ -45,11 +46,13 @@ impl<'s, 't> Function<'s, 't> {
 
         /* Get function arguments */
 
-        let mut arguments = parse_arguments(&tokens[2 + offset]);
-
-        if let Err(ref mut es) = arguments {
-            errors.append(es);
-        }
+        let (args, object_method) = match parse_arguments(&tokens[2 + offset]) {
+            Ok((a, om)) => (a, om),
+            Err(ref mut es) => {
+                errors.append(es);
+                (vec![], false) // placeholder
+            }
+        };
 
         /* Get function return type */
 
@@ -77,8 +80,9 @@ impl<'s, 't> Function<'s, 't> {
         if errors.is_empty() {
             Ok(Function {
                 public: offset == 1,
+                object_method,
                 name,
-                args: arguments.unwrap(),
+                args,
                 return_type,
                 body: body.unwrap()
             })
@@ -89,11 +93,20 @@ impl<'s, 't> Function<'s, 't> {
 }
 
 
-fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s, 't>>, Vec<Error>> {
-    /* Attempts to parse a list of function arguments */
+/* Function arguments */
+
+
+fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<(Vec<Argument<'s, 't>>, bool), Vec<Error>> {
+   /* Attempts to parse a list of function arguments
+    *
+    * returns: a tuple containing:
+    * - the function's arguments
+    * - whether or not the function is an object method
+    */
 
     let mut args = vec![];
     let mut errors = vec![];
+    let mut object_method = false;
 
     let args_block = match args_block {
         Token::Block { contents, open_delim, .. } => {
@@ -113,37 +126,21 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
                         .into()
     };
 
-    let mut index = 0;
-    let mut prev = 0;
+    let arg_indices = Token::split_tokens(&args_block[..], |t| t.to_string() == ",");
 
-    // lands on a new argument each time
-    while index < args_block.len() {
-        while index < args_block.len() {
-            if args_block[index].to_string() == "," {
-                break;
-            } else {
-                index += 1;
-            }
-        }
-
-        if prev == 0 && index == 1 && args_block[0].to_string() == "self" {
-            args.push(Argument {
-                arg_name: &args_block[0],
-                arg_type: Rc::new(TypeKind::ObjSelf)
-            });
+    for (start, end) in arg_indices {
+        if start == 0 && end == 1 && args_block[0].to_string() == "self" {
+            object_method = true;
         } else {
-            match Argument::from_tokens(&args_block[prev..index]) {
+            match Argument::from_tokens(&args_block[start..end]) {
                 Ok(arg) => args.push(arg),
                 Err(ref mut es) => errors.append(es)
             }
         }
-
-        index += 1;
-        prev   = index;
     }
 
     if errors.is_empty() {
-        Ok(args)
+        Ok((args, object_method))
     } else {
         Err(errors)
     }
