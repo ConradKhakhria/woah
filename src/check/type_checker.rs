@@ -1,4 +1,5 @@
 use crate::{
+    check::ScopedValue,
     error::{
         Error,
         ErrorKind
@@ -23,7 +24,7 @@ use std::{
 pub struct TypeChecker<'s, 't> {
     classes: HashMap<String, Class<'s, 't>>,
     current_class: String,
-    current_scope: Vec<(String, bool, Rc<TypeKind<'s, 't>>)>
+    current_scope: Vec<ScopedValue<'s, 't>>
 }
 
 
@@ -41,18 +42,18 @@ impl<'s, 't> TypeChecker<'s, 't> {
         }
     }
 
-    
+
     /* Scope functions */
 
 
-    fn get_scope_entry<T: ToString>(&self, name: &T) -> Option<(&String, bool, Rc<TypeKind<'s, 't>>)> {
-        /* Gets the latest entry in the scope */
+    fn get_scope_entry<T: ToString>(&self, name: &T) -> Option<&ScopedValue<'s, 't>> {
+        /* Gets the latest entry in the scope of a given name */
 
         let name_string = name.to_string();
 
-        for (val_name, constant, val_type) in self.current_scope.iter().rev() {
-            if *val_name == name_string {
-                return Some((val_name, *constant, Rc::clone(val_type)));
+        for scope_entry in self.current_scope.iter().rev() {
+            if *scope_entry.var_name() == name_string {
+                return Some(scope_entry);
             }
         }
 
@@ -265,10 +266,13 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         let ident_name = token.to_string();
 
-        // checks for a variable with the same name
-        for (val_name, _, val_type) in self.current_scope().iter() {
-            if ident_name == *val_name {
-                return Ok(Rc::clone(val_type));
+        // checks for a value of the same name
+        if let Some(scoped_value) = self.get_scope_entry(&ident_name) {
+            if *scoped_value.var_name() == ident_name {
+                return match scoped_value.var_type() {
+                    Some(tp) => Ok(Rc::clone(tp)),
+                    None => Err(vec![]) // poisoned
+                }
             }
         }
 
@@ -339,7 +343,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
     fn check_statement_block_type(&mut self, statements: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
         /* Checks the types of a list of statements */
 
-        let stack_top_name = self.current_scope.last().map(|(s, _, _)| s.clone());
+        let stack_top_name = self.current_scope.last().map(|v| v.var_name().clone());
         let mut errors = vec![];
 
         for statement in statements.iter_mut() {
@@ -348,8 +352,8 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         match stack_top_name {
             Some(name) => {
-                while let Some((curr_top_name, _, _)) = self.current_scope.last() {
-                    if *curr_top_name == name {
+                while let Some(value) = self.current_scope.last() {
+                    if *value.var_name() == name {
                         break;
                     } else {
                         self.current_scope.pop();
@@ -422,6 +426,8 @@ impl<'s, 't> TypeChecker<'s, 't> {
     fn check_declaration_type(&mut self, declaration: &mut StatementType<'s, 't>) -> Vec<Error> {
         /* Checks the type of a declaration */
 
+        let mut errors = vec![];
+
         let (value_name, value_type, value, constant) = match declaration {
             StatementType::Declare { value_name, value_type, value, constant } => {
                 (value_name, value_type, value, constant)
@@ -438,7 +444,25 @@ impl<'s, 't> TypeChecker<'s, 't> {
         }
 
         match value {
-            _ => unimplemented!()
+            Some(expr) => {
+                let expr_type = match self.get_expr_type(expr) {
+                    Ok(t) => t,
+                    Err(ref mut es) => {
+                        errors.append(es);
+                        return errors;
+                    }
+                };
+
+                if let Some(given_type) = value_type {
+                    if *given_type != *expr_type {
+                        
+                    }
+                }
+            }
+
+            None => {
+
+            }
         }
 
 
