@@ -48,6 +48,7 @@ pub enum ExprKind<'s, 't> {
 #[derive(Debug)]
 pub struct Expr<'s, 't> {
     pub expr_kind: ExprKind<'s, 't>,
+    pub expr_type: Option<TypeKind<'s, 't>>,
     pub first_token: &'t Token<'s>,
     pub last_token: &'t Token<'s>
 }
@@ -90,6 +91,7 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
                 Some(match parse_array(&contents[..], tokens[0].position()) {
                     Ok(es) => Ok(Expr {
                         expr_kind: ExprKind::ArrayLiteral { elems: es },
+                        expr_type: None,
                         first_token: &tokens[0],
                         last_token: contents.last().unwrap_or(&tokens[0])
                     }),
@@ -110,6 +112,7 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
     Some(Ok(
         Expr {
             expr_kind,
+            expr_type: None,
             first_token: &tokens[0],
             last_token: &tokens[0]
         }
@@ -169,6 +172,7 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                 parent: Box::new(parent.unwrap()),
                 attr_name: attr_name.unwrap()
             },
+            expr_type: None,
             first_token: &tokens[0],
             last_token: tokens.last().unwrap()
         })
@@ -202,6 +206,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     
                             Ok(Expr {
                                 expr_kind,
+                                expr_type: None,
                                 first_token: &tokens[0],
                                 last_token: tokens.last().unwrap()
                             })
@@ -224,6 +229,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                     operator: &tokens[0],
                     operand: Box::new(expr)
                 },
+                expr_type: None,
                 first_token: &tokens[0],
                 last_token: tokens.last().unwrap()
             })
@@ -279,6 +285,7 @@ fn parse_funcall<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     Some(Ok(
         Expr {
             expr_kind: ExprKind::FunctionCall { function, args },
+            expr_type: None,
             first_token: tokens.first().unwrap(),
             last_token:  tokens.last().unwrap()
         }
@@ -313,6 +320,7 @@ fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     Some(Ok(
         Expr {
             expr_kind: ExprKind::ArrayIndexing { array, index },
+            expr_type: None,
             first_token: tokens.first().unwrap(),
             last_token: tokens.last().unwrap()
         }
