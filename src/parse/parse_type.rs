@@ -12,6 +12,8 @@ pub enum TypeKind<'s, 't> {
 
     Char,
 
+    Class(String),
+
     String,
 
     Bool,
@@ -208,10 +210,11 @@ impl<'s, 't> TypeKind<'s, 't> {
 impl<'s, 't> PartialEq for TypeKind<'s, 't> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TypeKind::Bool, TypeKind::Bool)           => true,
-            (TypeKind::Char, TypeKind::Char)           => true,
-            (TypeKind::Float, TypeKind::Float)         => true,
-            (TypeKind::Int, TypeKind::Int)             => true,
+            (TypeKind::Bool, TypeKind::Bool) => true,
+            (TypeKind::Char, TypeKind::Char) => true,
+            (TypeKind::Class(x), TypeKind::Class(y)) => x == y,
+            (TypeKind::Float, TypeKind::Float) => true,
+            (TypeKind::Int, TypeKind::Int) => true,
             (TypeKind::EmptyList, TypeKind::EmptyList) => true,
             (TypeKind::List(a), TypeKind::List(b)) => *a == *b,
             (TypeKind::MutRef(a), TypeKind::MutRef(b)) => *a == *b,
@@ -237,10 +240,11 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
 impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string: String = match self {
-            TypeKind::Bool      => "bool".into(),
-            TypeKind::Char      => "char".into(),
+            TypeKind::Bool => "bool".into(),
+            TypeKind::Char => "char".into(),
+            TypeKind::Class(name) => format!("<Class '{}'>", name),
             TypeKind::EmptyList => "<empty list>".into(),
-            TypeKind::Float     => "float".into(),
+            TypeKind::Float => "float".into(),
             TypeKind::Function { args, return_type } => {
                 let mut string = String::from("(");
 
