@@ -12,11 +12,13 @@ use crate::{
     },
     token::Token
 };
+use derive_getters::Getters;
 use std::{
     collections::HashMap,
     rc::Rc
 };
 
+#[derive(Getters)]
 pub struct TypeChecker<'s, 't> {
     classes: HashMap<String, Class<'s, 't>>,
     current_class: String,
@@ -34,29 +36,6 @@ impl<'s, 't> TypeChecker<'s, 't> {
             current_class: String::new(),
             current_scope: vec![]
         }
-    }
-
-
-    /* Getters */
-
-    pub fn classes(&self) -> &HashMap<String, Class<'s, 't>> {
-        /* Returns the type checker's classes */
-
-        &self.classes
-    }
-
-
-    pub fn current_class(&self) -> &String {
-        /* Returns the current class of the type checker */
-
-        &self.current_class
-    }
-
-
-    pub fn current_scope(&self) -> &Vec<(String, Rc<TypeKind<'s, 't>>)> {
-        /* Returns the current scope of the type checker */
-
-        &self.current_scope
     }
 
 
@@ -146,25 +125,33 @@ impl<'s, 't> TypeChecker<'s, 't> {
     fn check_attr_res_type(&self, parent: &Expr<'s, 't>, attr_name: &Token<'s>) -> TypeResult<'s, 't> {
         /* Checks the type of an attribute resolution */
 
-        let parent_class_type = self.check_expr_type(parent)?;
-        let parent_class_name = match &*parent_class_type {
-            TypeKind::HigherOrder { name, .. } => name,
+        let (class_name, object_method) = match &*self.check_expr_type(parent)? {
+            TypeKind::Class(name) => (name.to_string(), false),
+
+            TypeKind::HigherOrder { name, .. } => (name.to_string(), true),
+
             _ => unimplemented!()
         };
 
-        let class = match self.classes.get(&parent_class_name.to_string()) {
+        let class = match self.classes.get(&class_name) {
             Some(c) => c,
             None => return Error::new(ErrorKind::NameError)
                                 .set_position(attr_name.position())
-                                .set_message(format!("Unknown class '{}'", parent_class_name))
+                                .set_message(format!("Unknown class '{}'", class_name))
                                 .into()
         };
 
-        match class.attribute_type(attr_name, &self.current_class()) {
+        let (attr_result, attr_type_string) = if object_method {
+            (class.object_attribute_type(attr_name, &self.current_class), "object")
+        } else {
+            (class.class_attribute_type(attr_name, &self.current_class), "class")
+        };
+
+        match attr_result {
             Some(tp) => Ok(tp),
             None => Error::new(ErrorKind::TypeError)
                         .set_position(attr_name.position())
-                        .set_message(format!("class '{}' has no attribute '{}'", parent_class_name, attr_name))
+                        .set_message(format!("class '{}' has no {} attribute '{}'", class_name, attr_type_string, attr_name))
                         .into()
         }
     }
@@ -184,6 +171,10 @@ impl<'s, 't> TypeChecker<'s, 't> {
     
         if let Err(ref mut es) = right_type {
             errors.append(es);
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
         }
 
         let res = match (&*left_type.unwrap(), &*right_type.unwrap()) {
@@ -262,7 +253,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         // checks for a class of the same name
         match self.classes().get(&ident_name) {
-            Some(class) => unimplemented!(),
+            Some(class) => Ok(Rc::new(TypeKind::Class(ident_name))),
             None => Error::new(ErrorKind::NameError)
                         .set_position(token.position())
                         .set_message(format!("No variable or class named '{}' in this scope", ident_name))
