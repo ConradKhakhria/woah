@@ -89,7 +89,7 @@ impl<'s, 't> Class<'s, 't> {
 
     /* Attribute getters */
 
-    
+
 }
 
 
@@ -202,7 +202,11 @@ pub fn collect_classes<'s, 't>(lines: &Vec<Line<'s, 't>>) -> Result<HashMap<Stri
     for line in lines {
         match Class::new(line) {
             Ok(c) => {
-                classes.insert(c.name.to_string(), c);
+                if let Some(_) = classes.insert(c.name.to_string(), c) {
+                    errors.push(Error::new(ErrorKind::NameError)
+                                    .set_position(line.line_tokens[0].position())
+                                    .set_message(format!("Class '{}' defined twice", c.name)));
+                }
             }
 
             Err(ref mut es) => {
