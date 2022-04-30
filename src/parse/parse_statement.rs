@@ -4,6 +4,7 @@ use crate::{
     line::Line,
     parse::{ Expr, parse_expression, TypeKind }
 };
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum StatementType<'s, 't> {
@@ -14,7 +15,7 @@ pub enum StatementType<'s, 't> {
 
     Declare {
         value_name: &'t Token<'s>,
-        value_type: Option<TypeKind<'s, 't>>,
+        value_type: Option<Rc<TypeKind<'s, 't>>>,
         value: Option<Expr<'s, 't>>,
         constant: bool
     },
@@ -132,7 +133,7 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 
     let value_type = if tokens[2].to_string() == ":" {
         match TypeKind::from_tokens(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
-            Ok(tp) => Some(tp),
+            Ok(tp) => Some(Rc::new(tp)),
             Err(ref mut es) => {
                 errors.append(es);
                 None
