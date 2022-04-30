@@ -16,8 +16,6 @@ pub enum TypeKind<'s, 't> {
 
     Bool,
 
-    ObjSelf,
-
     EmptyList,
 
     MutRef(Rc<TypeKind<'s, 't>>),
@@ -215,7 +213,6 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
             (TypeKind::Float, TypeKind::Float)         => true,
             (TypeKind::Int, TypeKind::Int)             => true,
             (TypeKind::EmptyList, TypeKind::EmptyList) => true,
-            (TypeKind::ObjSelf, TypeKind::ObjSelf)     => true,
             (TypeKind::List(a), TypeKind::List(b)) => *a == *b,
             (TypeKind::MutRef(a), TypeKind::MutRef(b)) => *a == *b,
             (TypeKind::HigherOrder { name: n1, args: a1 },
@@ -275,7 +272,6 @@ impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
             TypeKind::Int => "int".into(),
             TypeKind::List(t) => format!("[]{}", t),
             TypeKind::MutRef(t) => format!("@{}", t),
-            TypeKind::ObjSelf => format!("<Self>"),
             TypeKind::String => "str".into()
         };
 
