@@ -66,10 +66,12 @@ impl<'s, 't> Class<'s, 't> {
         for line in line.line_derivs.iter() {
             match Attribute::from_line(line) {
                 Ok(attr) => {
-                    if let Some(_) = attributes.insert(attr.name, attr) {
+                    let attr_name = attr.name.clone();
+
+                    if let Some(_) = attributes.insert(attr.name.clone(), attr) {
                         errors.push(Error::new(ErrorKind::NameError)
                                         .set_position(line.line_tokens[0].position())
-                                        .set_message(format!("Cannot have multiple defintions of '{}'", attr.name)));
+                                        .set_message(format!("Cannot have multiple defintions of '{}'", attr_name)));
                     }
                 }
 
@@ -89,7 +91,43 @@ impl<'s, 't> Class<'s, 't> {
 
     /* Attribute getters */
 
+    pub fn class_attribute_type(&self, attr_name: &Token<'s>, curr: &String) -> Option<Rc<TypeKind<'s, 't>>> {
+        /* Returns a class attribute (class method) */
 
+        match self.attributes.get(&attr_name.to_string()) {
+            Some(attr) => {
+                if !attr.public && self.name.to_string() != *curr {
+                    None
+                } else if let AttrType::ClassMethod(method) = &attr.attribute_type {
+                    Some(Rc::new(method.into()))
+                } else {
+                    None
+                }
+            }
+
+            None => None
+        }
+    }
+
+
+    pub fn object_attribute_type(&self, attr_name: &Token<'s>, curr: &String) -> Option<Rc<TypeKind<'s, 't>>> {
+        /* Returns an object attribute (field or object method) */
+
+        let attr = match self.attributes.get(&attr_name.to_string()) {
+            Some(attr) => attr,
+            None => return None
+        };
+
+        if !attr.public && self.name.to_string() != *curr {
+            return None;
+        }
+
+        match &attr.attribute_type {
+            AttrType::ClassMethod(_) => None,
+            AttrType::ObjectMethod(f) => Some(Rc::new(f.into())),
+            AttrType::Field { attr_type, ..} => Some(Rc::clone(attr_type))
+        }
+    }
 }
 
 
@@ -202,10 +240,12 @@ pub fn collect_classes<'s, 't>(lines: &Vec<Line<'s, 't>>) -> Result<HashMap<Stri
     for line in lines {
         match Class::new(line) {
             Ok(c) => {
+                let class_name = c.name.to_string();
+
                 if let Some(_) = classes.insert(c.name.to_string(), c) {
                     errors.push(Error::new(ErrorKind::NameError)
                                     .set_position(line.line_tokens[0].position())
-                                    .set_message(format!("Class '{}' defined twice", c.name)));
+                                    .set_message(format!("Class '{}' defined twice", class_name)));
                 }
             }
 
