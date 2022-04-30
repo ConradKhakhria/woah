@@ -23,6 +23,7 @@ use std::{
 #[derive(Getters)]
 pub struct TypeChecker<'s, 't> {
     classes: HashMap<String, Class<'s, 't>>,
+    current_function_return: Option<Rc<TypeKind<'s, 't>>>,
     current_class: String,
     current_scope: Vec<ScopedValue<'s, 't>>
 }
@@ -37,6 +38,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         TypeChecker {
             classes,
+            current_function_return: None,
             current_class: String::new(),
             current_scope: vec![]
         }
@@ -498,6 +500,74 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
+    fn check_for_loop_type(&mut self, iterator: &Token<'s>, range: &mut Expr<'s, 't>, block: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
+        /* Checks the types of values in a for loop */
+
+        let mut range_type = match self.get_expr_type(range) {
+            Ok(tp) => tp,
+            Err(es) => return es
+        };
+
+        let iterator_name = iterator.to_string();
+        let iterator_type = match &*range_type {
+            TypeKind::List(deriv) => Rc::clone(deriv),
+            tp => return Error::new(ErrorKind::TypeError)
+                                        .set_position(range.first_token.position())
+                                        .set_message(format!("Expected list type, received {}", tp))
+                                        .into()
+        };
+
+        self.current_scope.push(
+            ScopedValue {
+                var_name: iterator_name,
+                constant: true,
+                var_type: Some(iterator_type)
+            }
+        );
+
+        let errors = self.check_statement_block_type(block);
+
+        self.current_scope.pop();
+
+        errors
+    }
+
+
+    fn check_return_type(&mut self, value: &mut Option<Expr<'s, 't>>, pos: (usize, usize)) -> Vec<Error> {
+        /* Checks the type of a return statement */
+    
+        match (value, &self.current_function_return) {
+            (Some(expr), Some(ret_type)) => {
+                let expr_type = match self.get_expr_type(expr) {
+                    Ok(tp) => tp,
+                    Err(es) => return es
+                };
+
+                if expr_type == *ret_type {
+                    vec![]
+                } else {
+                    Error::new(ErrorKind::TypeError)
+                        .set_position(pos)
+                        .set_message(format!("Expected type {}, received type {}", ret_type, expr_type))
+                        .into()
+                }
+            }
+
+            (None, None) => vec![],
+
+            (None, Some(tp)) => Error::new(ErrorKind::TypeError)
+                                    .set_position(pos)
+                                    .set_message(format!("Expected return type {}, received nothing", tp))
+                                    .into(),
+
+            (Some(_), None) => Error::new(ErrorKind::TypeError)
+                                    .set_position(pos)
+                                    .set_message("Function returns no value")
+                                    .into()
+        }
+    }
+
+
     pub fn check_statement_type(&mut self, statement: &mut Statement<'s, 't>) -> Vec<Error> {
        /* Checks whether a statement obeys the type system
         *
@@ -518,7 +588,29 @@ impl<'s, 't> TypeChecker<'s, 't> {
                 self.check_declaration_type(tp)
             }
 
-            _ => unimplemented!()
+            StatementType::Else { block } => {
+                self.check_statement_block_type(block)
+            }
+
+            StatementType::ForLoop { iterator_name, range, block } => {
+                self.check_for_loop_type(iterator_name, range, block)
+            }
+
+            StatementType::RawExpr { expr } => {
+                if let Err(es) = self.get_expr_type(expr) {
+                    es
+                } else {
+                    vec![]
+                }
+            }
+
+            StatementType::Return { value } => {
+                self.check_return_type(value, statement.first_token.position())
+            }
+
+            StatementType::WhileLoop { condition, block } => {
+                self.check_conditional_type(condition, block)
+            }
         }
     }
 }
