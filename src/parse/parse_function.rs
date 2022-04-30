@@ -92,6 +92,41 @@ impl<'s, 't> Function<'s, 't> {
     }
 }
 
+impl<'s, 't> Into<TypeKind<'s, 't>> for Function<'s, 't> {
+    fn into(self) -> TypeKind<'s, 't> {
+        let mut args = vec![];
+
+        for arg in self.args.iter() {
+            args.push(Rc::clone(&arg.arg_type));
+        }
+    
+        TypeKind::Function {
+            args,
+            return_type: self.return_type
+        }
+    }
+}
+
+
+impl<'s, 't> Into<TypeKind<'s, 't>> for &Function<'s, 't> {
+    fn into(self) -> TypeKind<'s, 't> {
+        let mut args = vec![];
+
+        for arg in self.args.iter() {
+            args.push(Rc::clone(&arg.arg_type));
+        }
+    
+        TypeKind::Function {
+            args,
+            return_type: if let Some(r) = &self.return_type {
+                Some(Rc::clone(r))
+            } else {
+                None
+            }
+        }
+    }
+}
+
 
 /* Function arguments */
 
