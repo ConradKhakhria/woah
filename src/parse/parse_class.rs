@@ -7,23 +7,46 @@ use crate::{
     },
     token::Token,
 };
+use derive_getters::Getters;
 use std::{
     collections::HashMap,
     rc::Rc,
     string::ToString
 };
 
-#[derive(Debug)]
+#[derive(Debug, Getters)]
 pub struct Class<'s, 't> {
-    pub name: &'t Token<'s>,
-    pub public_fields: Vec<Field<'s, 't>>,
-    pub private_fields: Vec<Field<'s, 't>>,
-    pub public_methods: Vec<Function<'s, 't>>,
-    pub private_methods: Vec<Function<'s, 't>>
+    name: &'t Token<'s>,
+    attributes: HashMap<String, Attribute<'s, 't>>,
 }
 
 
 impl<'s, 't> Class<'s, 't> {
+    /* Initialisation */
+
+    fn get_class_name(line: &Line<'s, 't>) -> Result<&'t Token<'s>, Vec<Error>> {
+        /* Determintes and checks the name of a class */
+
+        match &line.line_tokens[1] {
+            t @ Token::Identifier { string, .. } => {
+                if ('A'..'Z').contains(&string.chars().next().unwrap()) {
+                    Ok(t)
+                } else {
+                    Error::new(ErrorKind::SyntaxError)
+                        .set_position(t.position())
+                        .set_message("Class names must begin with an upper-case character")
+                        .into()
+                }
+            },
+
+            t => Error::new(ErrorKind::SyntaxError)
+                        .set_position(t.position())
+                        .set_message("Expected class name")
+                        .into()
+        }
+    }
+
+
     pub fn new(line: &Line<'s, 't>) -> Result<Class<'s, 't>, Vec<Error>> {
         /* Parses a class from a nested Line */
 
@@ -37,175 +60,136 @@ impl<'s, 't> Class<'s, 't> {
                         .into();
         }
 
-        let name = &tokens[1];
-
-        if let Token::Identifier { string, ..} = name {
-            if !('A'..'Z').contains(&string.chars().next().unwrap()) {
-                errors.push(Error::new(ErrorKind::SyntaxError)
-                                    .set_position(name.position())
-                                    .set_message("Class names must begin with an upper-case character"));
-            }
-        } else {
-            errors.push(Error::new(ErrorKind::SyntaxError)
-                            .set_position(name.position())
-                            .set_message("Expected class name"));
-        }
-
-        let mut public_fields = vec![];
-        let mut private_fields = vec![];
-        let mut public_methods = vec![];
-        let mut private_methods = vec![];
+        let name = Self::get_class_name(line)?;
+        let mut attributes = HashMap::new();
 
         for line in line.line_derivs.iter() {
-            if line.line_tokens.len() < 3 {
-                errors.push(Error::new(ErrorKind::SyntaxError)
-                                .set_position(line.line_tokens[0].position())
-                                .set_message("Unrecognised syntax in class defintion")
-                                .into());
-            } else if line.line_tokens[0].to_string() == "def" || line.line_tokens[1].to_string() == "def" {
-                match Function::from_line(line) {
-                    Ok(f) => {
-                        if f.public {
-                            public_methods.push(f);
-                        } else {
-                            private_methods.push(f);
-                        }
-                    },
-
-                    Err(ref mut es) => errors.append(es)
+            match Attribute::from_line(line) {
+                Ok(attr) => {
+                    if let Some(_) = attributes.insert(attr.name, attr) {
+                        errors.push(Error::new(ErrorKind::NameError)
+                                        .set_position(line.line_tokens[0].position())
+                                        .set_message(format!("Cannot have multiple defintions of '{}'", attr.name)));
+                    }
                 }
-            } else {
-                match Field::from_tokens(&line.line_tokens) {
-                    Ok((field, public)) => {
-                        if public {
-                            public_fields.push(field);
-                        } else {
-                            private_fields.push(field);
-                        }
-                    },
 
-                    Err(ref mut es) => errors.append(es)
-                }
+                Err(ref mut es) => errors.append(es)
             }
         }
 
         if errors.is_empty() {
             Ok(Class {
                 name,
-                public_fields,
-                private_fields,
-                public_methods,
-                private_methods
+                attributes
             })
         } else {
             Err(errors)
         }
     }
 
+    /* Attribute getters */
 
-    pub fn attribute_type<T: ToString>(&self, attribute_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
-        /* Gets the type of a public or private attribute */
-
-        if let Some(tp) = self.field_type(attribute_name, self_name) {
-            Some(tp)
-        } else if let Some(tp) = self.method_type(attribute_name, self_name) {
-            Some(tp)
-        } else {
-            None
-        }
-    }
-
-
-    pub fn field_type<T: ToString>(&self, field_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
-        /* Returns the type of a public or private field */
-
-        let available_fields = if self_name == self.name.to_string() {
-            vec![ &self.private_fields, &self.public_fields ]
-        } else {
-            vec![ &self.public_fields ]
-        };
-
-        for field_collection in available_fields.iter() {
-            for field in field_collection.iter() {
-                if field.field_name.to_string() == field_name.to_string() {
-                    return Some(Rc::clone(&field.field_type))
-                }
-            }
-        }
-
-        None
-    }
-
-
-    pub fn method_type<T: ToString>(&self, method_name: &T, self_name: &str) -> Option<Rc<TypeKind<'s, 't>>> {
-        /* Returns the type of a method */
-
-        let available_methods = if self_name == self.name.to_string() {
-            vec![ &self.private_methods, &self.public_methods ]
-        } else {
-            vec![ &self.public_methods ]
-        };
-
-        for method_collection in available_methods.iter() {
-            for method in method_collection.iter() {
-                if method.name.to_string() == method_name.to_string() {
-                    let mut args = vec![];
-
-                    for arg in method.args.iter() {
-                        args.push(Rc::clone(&arg.arg_type));
-                    }
-
-                    return Some(Rc::new(
-                        TypeKind::Function {
-                            args,
-                            return_type: match &method.return_type {
-                                Some(tp) => Some(Rc::clone(tp)),
-                                None => None
-                            }
-                        }
-                    ))
-                }
-            }
-        }
-
-        None
-    }
+    
 }
+
+
+/* Attributes
+ *
+ * All of a classes attributes are stored in an Attribute struct,
+ * which records the visibility and attribute type.
+ * 
+ * Attributes must have unique names, disallowing identically-named
+ * methods and fields
+ */
 
 
 #[derive(Debug)]
-pub struct Field<'s, 't> {
-    pub field_name: &'t Token<'s>,
-    pub field_type: Rc<TypeKind<'s, 't>>
+pub enum AttrType<'s, 't> {
+    Field {
+        attr_name: &'t Token<'s>,
+        attr_type: Rc<TypeKind<'s, 't>>
+    },
+
+    ClassMethod(Function<'s, 't>),
+
+    ObjectMethod(Function<'s, 't>)
 }
 
-impl<'s, 't> Field<'s, 't> {
-    fn from_tokens(tokens: &'t [Token<'s>]) -> Result<(Field<'s, 't>, bool), Vec<Error>> {
-        /* Parses an argument */
 
-        let offset = if tokens[0].to_string() == "pub" { 1 } else { 0 };
+#[derive(Debug, Getters)]
+pub struct Attribute<'s, 't> {
+    public: bool,
+    name: String,
+    attribute_type: AttrType<'s, 't>
+}
 
-        let field_name = &tokens[0 + offset];
 
-        if let Token::Identifier {..} = field_name { } else {
+
+impl<'s, 't> Attribute<'s, 't> {
+    fn from_line(line: &Line<'s, 't>) -> Result<Self, Vec<Error>> {
+        let tokens = line.line_tokens;
+        let mut index = 0;
+        let name;
+
+        if tokens.len() < 3 {
             return Error::new(ErrorKind::SyntaxError)
-                        .set_position(tokens[0 + offset].position())
-                        .set_message("Expected an argument name")
-                        .into();
+                            .set_position(tokens[0].position())
+                            .set_message("Unrecognised syntax in class defintion")
+                            .into();
         }
 
-        if tokens.len() < 3 + offset || tokens[1 + offset].to_string() != ":" {
-            return Error::new(ErrorKind::SyntaxError)
-                        .set_position(tokens[0 + offset].position())
-                        .set_message("Expected syntax <argument name> : <argument type>")
-                        .into();
-        }
+        let public = if tokens[0].to_string() == "pub" {
+            index += 1;
+            true
+        } else {
+            false
+        };
 
-        let field_type = Rc::new(TypeKind::from_tokens(&tokens[2 + offset..])?);
+        let attribute_type = if tokens[index].to_string() == "def" {
+            let function = Function::from_line(line)?;
 
-        Ok((Field { field_name, field_type }, offset == 1))
+            name = function.name.to_string();
+
+            if function.object_method {
+                AttrType::ObjectMethod(function)
+            } else {
+                AttrType::ClassMethod(function)
+            }
+        } else {
+            let attr_name = &tokens[index];
+
+            name = attr_name.to_string();
+
+            if let Token::Identifier {..} = attr_name {} else {
+                return Error::new(ErrorKind::SyntaxError)
+                            .set_position(attr_name.position())
+                            .set_message("Expected an attribute name")
+                            .into();
+            }
+
+            if tokens[index + 1].to_string() != ":" {
+                return Error::new(ErrorKind::SyntaxError)
+                            .set_position(attr_name.position())
+                            .set_message("Expected syntax (pub)? <name> : <type>")
+                            .into();
+            }
+
+            let attr_type = Rc::new(TypeKind::from_tokens(&tokens[index + 2..])?);
+
+            AttrType::Field {
+                attr_name,
+                attr_type 
+            }
+        };
+
+        Ok(Attribute {
+            public,
+            name,
+            attribute_type
+        })
     }
 }
+
 
 pub fn collect_classes<'s, 't>(lines: &Vec<Line<'s, 't>>) -> Result<HashMap<String, Class<'s, 't>>, Vec<Error>> {
     /* Creates a map of all the classes in a program, for use in later compilation */
