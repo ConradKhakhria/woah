@@ -10,7 +10,6 @@ pub struct Error {
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorKind {
     NameError,
-    ScopeError,
     SyntaxError,
     TypeError
 }
@@ -81,7 +80,6 @@ impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
             ErrorKind::NameError   => "Name Error",
-            ErrorKind::ScopeError  => "Scope Error",
             ErrorKind::SyntaxError => "Syntax Error",
             ErrorKind::TypeError   => "Type Error"
         })
