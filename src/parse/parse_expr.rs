@@ -3,6 +3,7 @@ use crate::{
     parse::TypeKind,
     token::Token
 };
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum ExprKind<'s, 't> {
@@ -48,7 +49,7 @@ pub enum ExprKind<'s, 't> {
 #[derive(Debug)]
 pub struct Expr<'s, 't> {
     pub expr_kind: ExprKind<'s, 't>,
-    pub expr_type: Option<TypeKind<'s, 't>>,
+    pub expr_type: Option<Rc<TypeKind<'s, 't>>>,
     pub first_token: &'t Token<'s>,
     pub last_token: &'t Token<'s>
 }
