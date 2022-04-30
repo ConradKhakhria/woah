@@ -1,6 +1,5 @@
 use crate::{
     error::{
-        collect_errors,
         Error,
         ErrorKind
     },
@@ -253,7 +252,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         // checks for a class of the same name
         match self.classes().get(&ident_name) {
-            Some(class) => Ok(Rc::new(TypeKind::Class(ident_name))),
+            Some(_) => Ok(Rc::new(TypeKind::Class(ident_name))),
             None => Error::new(ErrorKind::NameError)
                         .set_position(token.position())
                         .set_message(format!("No variable or class named '{}' in this scope", ident_name))
