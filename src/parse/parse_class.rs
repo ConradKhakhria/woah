@@ -37,7 +37,7 @@ impl<'s, 't> Class<'s, 't> {
                         .into();
         }
 
-        let name = &tokens[0];
+        let name = &tokens[1];
 
         if let Token::Identifier { string, ..} = name {
             if !('A'..'Z').contains(&string.chars().next().unwrap()) {
