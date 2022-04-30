@@ -7,6 +7,8 @@ use crate::{
         Class,
         Expr,
         ExprType,
+        Statement,
+        StatementType,
         TypeKind,
     },
     token::Token
@@ -41,13 +43,13 @@ impl<'s, 't> TypeChecker<'s, 't> {
     /* Expression Type checking */
 
 
-    fn check_array_indexing_type(&self, array: &Expr<'s, 't>, index: &Expr<'s, 't>) -> TypeResult<'s, 't> {
+    fn get_array_indexing_type(&self, array: &Expr<'s, 't>, index: &Expr<'s, 't>) -> TypeResult<'s, 't> {
         /* Checks the type of an <array>[<index>] expression */
 
         let mut errors = vec![];
 
-        let mut array_type = self.check_expr_type(array);
-        let mut index_type = self.check_expr_type(index);
+        let mut array_type = self.get_expr_type(array);
+        let mut index_type = self.get_expr_type(index);
 
         if let Err(ref mut es) = array_type {
             errors.append(es);
@@ -82,7 +84,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    fn check_array_literal_type(&self, elems: &Vec<Expr<'s, 't>>) -> TypeResult<'s, 't> {
+    fn get_array_literal_type(&self, elems: &Vec<Expr<'s, 't>>) -> TypeResult<'s, 't> {
         /* Checks the type of an array literal */
     
         if elems.len() == 0 {
@@ -93,7 +95,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
         let mut errors = vec![];
 
         for expr in elems.iter() {
-            match self.check_expr_type(expr) {
+            match self.get_expr_type(expr) {
                 Ok(tp) => elem_types.push(tp),
                 Err(ref mut es) => errors.append(es)
             }
@@ -121,10 +123,10 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    fn check_attr_res_type(&self, parent: &Expr<'s, 't>, attr_name: &Token<'s>) -> TypeResult<'s, 't> {
+    fn get_attr_res_type(&self, parent: &Expr<'s, 't>, attr_name: &Token<'s>) -> TypeResult<'s, 't> {
         /* Checks the type of an attribute resolution */
 
-        let (class_name, object_method) = match &*self.check_expr_type(parent)? {
+        let (class_name, object_method) = match &*self.get_expr_type(parent)? {
             TypeKind::Class(name) => (name.to_string(), false),
 
             TypeKind::HigherOrder { name, .. } => (name.to_string(), true),
@@ -156,13 +158,13 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    fn check_compound_type(&self, operator: &Token<'s>, left: &Expr<'s, 't>, right: &Expr<'s, 't>) -> TypeResult<'s, 't> {
+    fn get_compound_type(&self, operator: &Token<'s>, left: &Expr<'s, 't>, right: &Expr<'s, 't>) -> TypeResult<'s, 't> {
         /* Checks the type of a compound expression */
 
         let mut errors = vec![];
                         
-        let mut left_type = self.check_expr_type(left);
-        let mut right_type = self.check_expr_type(right);
+        let mut left_type = self.get_expr_type(left);
+        let mut right_type = self.get_expr_type(right);
 
         if let Err(ref mut es) = left_type {
             errors.append(es);
@@ -195,10 +197,10 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    fn check_funcall_type(&self, function: &Expr<'s, 't>, args: &Vec<Expr<'s, 't>>) -> TypeResult<'s, 't> {
+    fn get_funcall_type(&self, function: &Expr<'s, 't>, args: &Vec<Expr<'s, 't>>) -> TypeResult<'s, 't> {
         /* Returns the type of a function call expression */
 
-        let function_type = self.check_expr_type(function)?;
+        let function_type = self.get_expr_type(function)?;
         let mut errors = vec![];
 
         let (function_arg_types, function_return_type) = match &*function_type {
@@ -210,7 +212,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
         };
 
         for (i, arg) in args.iter().enumerate() {
-            match self.check_expr_type(arg) {
+            match self.get_expr_type(arg) {
                 Ok(tp) => {
                     if &*tp != &*function_arg_types[i] {
                         errors.push(Error::new(ErrorKind::TypeError)
@@ -238,7 +240,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    fn check_identifier_type(&self, token: &Token<'s>) -> TypeResult<'s, 't> {
+    fn get_identifier_type(&self, token: &Token<'s>) -> TypeResult<'s, 't> {
         /* Checks the type of an identifier */
 
         let ident_name = token.to_string();
@@ -261,32 +263,32 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
-    pub fn check_expr_type(&self, expr: &Expr<'s, 't>) -> TypeResult<'s, 't> {
+    pub fn get_expr_type(&self, expr: &Expr<'s, 't>) -> TypeResult<'s, 't> {
         /* Checks the type of an expression in a known context */
 
         match &expr.expr_type {
             ExprType::ArrayIndexing { array, index } => {
-                self.check_array_indexing_type(&array, &index)
+                self.get_array_indexing_type(&array, &index)
             }
 
             ExprType::ArrayLiteral { elems } => {
-                self.check_array_literal_type(elems)
+                self.get_array_literal_type(elems)
             }
 
             ExprType::AttrRes { parent, attr_name } => {
-                self.check_attr_res_type(parent, attr_name)
+                self.get_attr_res_type(parent, attr_name)
             }
 
             ExprType::Compound { operator, left, right } => {
-                self.check_compound_type(operator, left, right)
+                self.get_compound_type(operator, left, right)
             }
     
             ExprType::FunctionCall { function, args } => {
-                self.check_funcall_type(function, args)
+                self.get_funcall_type(function, args)
             }
     
             ExprType::Identifier => {
-                self.check_identifier_type(&expr.first_token)
+                self.get_identifier_type(&expr.first_token)
             }
 
             ExprType::Float => Ok(Rc::new(TypeKind::Float)),
@@ -296,8 +298,10 @@ impl<'s, 't> TypeChecker<'s, 't> {
             ExprType::String => Ok(Rc::new(TypeKind::String)),
 
             ExprType::Unary { operand, .. } => {
-                self.check_expr_type(operand)
+                self.get_expr_type(operand)
             }
         }
     }
+
+
 }
