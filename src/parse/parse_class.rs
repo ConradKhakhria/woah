@@ -64,7 +64,7 @@ impl<'s, 't> Class<'s, 't> {
         let mut attributes = HashMap::new();
 
         for line in line.line_derivs.iter() {
-            match Attribute::from_line(line) {
+            match Attribute::from_line(line, name.to_string()) {
                 Ok(attr) => {
                     let attr_name = attr.name.clone();
 
@@ -96,12 +96,15 @@ impl<'s, 't> Class<'s, 't> {
 
         match self.attributes.get(&attr_name.to_string()) {
             Some(attr) => {
-                if !attr.public && self.name.to_string() != *curr {
-                    None
-                } else if let AttrType::ClassMethod(method) = &attr.attribute_type {
-                    Some(Rc::new(method.into()))
-                } else {
-                    None
+                match &attr.attribute_type {
+                    AttrType::ClassMethod(m) | AttrType::Constructor(m) => {
+                        if !attr.public && self.name.to_string() != *curr {
+                            None
+                        } else {
+                            Some(Rc::new(m.into()))
+                        }
+                    },
+                    _ => None
                 }
             }
 
@@ -123,9 +126,9 @@ impl<'s, 't> Class<'s, 't> {
         }
 
         match &attr.attribute_type {
-            AttrType::ClassMethod(_) => None,
             AttrType::ObjectMethod(f) => Some(Rc::new(f.into())),
-            AttrType::Field { attr_type, ..} => Some(Rc::clone(attr_type))
+            AttrType::Field { attr_type, ..} => Some(Rc::clone(attr_type)),
+            _ => None
         }
     }
 }
@@ -150,6 +153,8 @@ pub enum AttrType<'s, 't> {
 
     ClassMethod(Function<'s, 't>),
 
+    Constructor(Function<'s, 't>),
+
     ObjectMethod(Function<'s, 't>)
 }
 
@@ -164,7 +169,7 @@ pub struct Attribute<'s, 't> {
 
 
 impl<'s, 't> Attribute<'s, 't> {
-    fn from_line(line: &Line<'s, 't>) -> Result<Self, Vec<Error>> {
+    fn from_line(line: &Line<'s, 't>, class_name: String) -> Result<Self, Vec<Error>> {
         let tokens = line.line_tokens;
         let mut index = 0;
         let name;
@@ -188,7 +193,48 @@ impl<'s, 't> Attribute<'s, 't> {
 
             name = function.name.to_string();
 
-            if function.object_method {
+            if name == "new" {
+                if !function.object_method {
+                    return Error::new(ErrorKind::SyntaxError)
+                                .set_position(tokens[index + 1].position())
+                                .set_message("Constructor must have a 'self' parameter")
+                                .into();
+                }
+
+                match &function.return_type {
+                    Some(tp) => {
+                        match &**tp {
+                            TypeKind::HigherOrder { name, .. } => {
+                                if name.to_string() != class_name {
+                                    return Error::new(ErrorKind::TypeError)
+                                                .set_position(tokens[index + 1].position())
+                                                .set_message("constructor must return the type of the class itself")
+                                                .into()
+                                }
+                            },
+
+                            _ => return Error::new(ErrorKind::TypeError)
+                                            .set_position(tokens[index + 1].position())
+                                            .set_message("constructor must return the type of the class itself")
+                                            .into()
+                        }
+                    }
+
+                    None => return Error::new(ErrorKind::TypeError)
+                                        .set_position(tokens[index + 1].position())
+                                        .set_message("constructor must return the type of the class itself")
+                                        .into()
+                }
+
+                if let None = &function.return_type {
+                    return Error::new(ErrorKind::SyntaxError)
+                                .set_position(tokens[index + 1].position())
+                                .set_message("Constructor must have no return type (as self return is implicit)")
+                                .into()
+                }
+
+                AttrType::Constructor(function)
+            } else if function.object_method {
                 AttrType::ObjectMethod(function)
             } else {
                 AttrType::ClassMethod(function)
