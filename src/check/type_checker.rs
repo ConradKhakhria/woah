@@ -6,7 +6,7 @@ use crate::{
     parse::{
         Class,
         Expr,
-        ExprType,
+        ExprKind,
         Statement,
         StatementType,
         TypeKind,
@@ -287,37 +287,37 @@ impl<'s, 't> TypeChecker<'s, 't> {
         /* Checks the type of an expression in a known context */
 
         match &expr.expr_type {
-            ExprType::ArrayIndexing { array, index } => {
+            ExprKind::ArrayIndexing { array, index } => {
                 self.get_array_indexing_type(&array, &index)
             }
 
-            ExprType::ArrayLiteral { elems } => {
+            ExprKind::ArrayLiteral { elems } => {
                 self.get_array_literal_type(elems)
             }
 
-            ExprType::AttrRes { parent, attr_name } => {
+            ExprKind::AttrRes { parent, attr_name } => {
                 self.get_attr_res_type(parent, attr_name)
             }
 
-            ExprType::Compound { operator, left, right } => {
+            ExprKind::Compound { operator, left, right } => {
                 self.get_compound_type(operator, left, right)
             }
     
-            ExprType::FunctionCall { function, args } => {
+            ExprKind::FunctionCall { function, args } => {
                 self.get_funcall_type(function, args)
             }
     
-            ExprType::Identifier => {
+            ExprKind::Identifier => {
                 self.get_identifier_type(&expr.first_token)
             }
 
-            ExprType::Float => Ok(Rc::new(TypeKind::Float)),
+            ExprKind::Float => Ok(Rc::new(TypeKind::Float)),
 
-            ExprType::Integer => Ok(Rc::new(TypeKind::Int)),
+            ExprKind::Integer => Ok(Rc::new(TypeKind::Int)),
 
-            ExprType::String => Ok(Rc::new(TypeKind::String)),
+            ExprKind::String => Ok(Rc::new(TypeKind::String)),
 
-            ExprType::Unary { operand, .. } => {
+            ExprKind::Unary { operand, .. } => {
                 self.get_expr_type(operand)
             }
         }

@@ -1,10 +1,11 @@
 use crate::{
     error::{ Error, ErrorKind },
+    parse::TypeKind,
     token::Token
 };
 
 #[derive(Debug)]
-pub enum ExprType<'s, 't> {
+pub enum ExprKind<'s, 't> {
     Compound {
         operator: &'t Token<'s>,
         left: Box<Expr<'s, 't>>,
@@ -46,7 +47,7 @@ pub enum ExprType<'s, 't> {
 
 #[derive(Debug)]
 pub struct Expr<'s, 't> {
-    pub expr_type: ExprType<'s, 't>,
+    pub expr_type: ExprKind<'s, 't>,
     pub first_token: &'t Token<'s>,
     pub last_token: &'t Token<'s>
 }
@@ -65,15 +66,15 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
     }
 
     let expr_type = match &tokens[0] {
-        Token::Identifier {..} => ExprType::Identifier,
+        Token::Identifier {..} => ExprKind::Identifier,
         Token::Number { string, ..} => {
             if string.contains(".") {
-                ExprType::Float
+                ExprKind::Float
             } else {
-                ExprType::Integer
+                ExprKind::Integer
             }
         },
-        Token::String {..} => ExprType::String,
+        Token::String {..} => ExprKind::String,
         Token::Symbol { string, .. } => {
             return Some(
                 Error::new(ErrorKind::SyntaxError)
@@ -88,7 +89,7 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
             } else if *open_delim == "[" {
                 Some(match parse_array(&contents[..], tokens[0].position()) {
                     Ok(es) => Ok(Expr {
-                        expr_type: ExprType::ArrayLiteral { elems: es },
+                        expr_type: ExprKind::ArrayLiteral { elems: es },
                         first_token: &tokens[0],
                         last_token: contents.last().unwrap_or(&tokens[0])
                     }),
@@ -164,7 +165,7 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     Some(if errors.is_empty() {
         Ok(Expr {
-            expr_type: ExprType::AttrRes {
+            expr_type: ExprKind::AttrRes {
                 parent: Box::new(parent.unwrap()),
                 attr_name: attr_name.unwrap()
             },
@@ -193,7 +194,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     
                     return Some(
                         if left.is_ok() && right.is_ok() {
-                            let expr_type = ExprType::Compound {
+                            let expr_type = ExprKind::Compound {
                                 operator: &tokens[i],
                                 left: Box::new(left.unwrap()),
                                 right: Box::new(right.unwrap())
@@ -219,7 +220,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
     if tokens[0].to_string() == "-" && tokens.len() > 1 {
         Some(if let Ok(expr) = parse_expression(&tokens[1..], tokens[1].position()) {
             Ok(Expr {
-                expr_type: ExprType::Unary {
+                expr_type: ExprKind::Unary {
                     operator: &tokens[0],
                     operand: Box::new(expr)
                 },
@@ -277,7 +278,7 @@ fn parse_funcall<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     Some(Ok(
         Expr {
-            expr_type: ExprType::FunctionCall { function, args },
+            expr_type: ExprKind::FunctionCall { function, args },
             first_token: tokens.first().unwrap(),
             last_token:  tokens.last().unwrap()
         }
@@ -311,7 +312,7 @@ fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     Some(Ok(
         Expr {
-            expr_type: ExprType::ArrayIndexing { array, index },
+            expr_type: ExprKind::ArrayIndexing { array, index },
             first_token: tokens.first().unwrap(),
             last_token: tokens.last().unwrap()
         }

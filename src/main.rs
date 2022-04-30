@@ -32,13 +32,13 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let classes = parse::collect_classes(&lines)?;
     let typechecker = check::TypeChecker::new(classes);
 
-    /* Obtain an expression */
+    /* Check expr type */
 
-    let expr_string = "1 + 2 + 3";
-    let expr_tokens = token::tokenise(&expr_string, &"<hi>", (1, 1))?;
+    let expr_string = String::from("Module.add(1, 2).add(1, 2)");
+    let expr_tokens = token::tokenise(&expr_string, "<hi>", (1, 1))?;
     let expr = parse::parse_expression(&expr_tokens, (1, 1))?;
 
-    println!("{:#?}", typechecker.check_expr_type(&expr));
+    println!("{}", typechecker.get_expr_type(&expr)?);
 
     Ok(())
 }
