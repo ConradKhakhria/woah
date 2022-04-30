@@ -40,17 +40,6 @@ impl std::fmt::Display for Error {
 }
 
 
-macro_rules! collect_errors {
-    ($result:expr, $errors:expr) => {
-        if let Err(ref mut es) = $result {
-            $errors.append(es);
-        }
-    };
-}
-
-pub(crate) use collect_errors;
-
-
 /* Conversions */
 
 impl Into<Vec<Error>> for Error {
@@ -125,7 +114,7 @@ impl Error {
 
         if let None = self.formatted_code_line {
             if let Some((line_number, col_number)) = self.position {
-                if line_number - 1 < lines.len() {
+                if line_number < lines.len() + 1 {
                     let line = &lines[line_number - 1];
                     let line_number_string: String = line_number.to_string();
                     let line_number_buffer: String = vec![' '; line_number_string.len()].into_iter().collect();
