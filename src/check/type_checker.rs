@@ -52,7 +52,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
         let name_string = name.to_string();
 
         for scope_entry in self.current_scope.iter().rev() {
-            if *scope_entry.var_name() == name_string {
+            if scope_entry.var_name == name_string {
                 return Some(scope_entry);
             }
         }
@@ -169,11 +169,23 @@ impl<'s, 't> TypeChecker<'s, 't> {
             (class.class_attribute_type(attr_name, &self.current_class), "class")
         };
 
+        let error_message = format!(
+            "class '{}' has no {}{} attribute '{}'",
+            class_name,
+            if class_name == self.current_class {
+                ""
+            } else {
+                "public "
+            },
+            attr_type_string,
+            attr_name
+        );
+
         match attr_result {
             Some(tp) => Ok(tp),
             None => Error::new(ErrorKind::TypeError)
                         .set_position(attr_name.position())
-                        .set_message(format!("class '{}' has no {} attribute '{}'", class_name, attr_type_string, attr_name))
+                        .set_message(error_message)
                         .into()
         }
     }
@@ -195,7 +207,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
             errors.append(es);
         }
 
-        if !errors.is_empty() {
+        if left_type.is_err() || right_type.is_err() {
             return Err(errors);
         }
 
@@ -268,8 +280,8 @@ impl<'s, 't> TypeChecker<'s, 't> {
 
         // checks for a value of the same name
         if let Some(scoped_value) = self.get_scope_entry(&ident_name) {
-            if *scoped_value.var_name() == ident_name {
-                return match scoped_value.var_type() {
+            if scoped_value.var_name == ident_name {
+                return match &scoped_value.var_type {
                     Some(tp) => Ok(Rc::clone(tp)),
                     None => Err(vec![]) // poisoned
                 }
@@ -340,10 +352,10 @@ impl<'s, 't> TypeChecker<'s, 't> {
     /* Statement type checking */
 
 
-    fn check_statement_block_type(&mut self, statements: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
+    pub fn check_statement_block_type(&mut self, statements: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
         /* Checks the types of a list of statements */
 
-        let stack_top_name = self.current_scope.last().map(|v| v.var_name().clone());
+        let stack_top_name = self.current_scope.last().map(|v| v.var_name.clone());
         let mut errors = vec![];
 
         for statement in statements.iter_mut() {
@@ -353,7 +365,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
         match stack_top_name {
             Some(name) => {
                 while let Some(value) = self.current_scope.last() {
-                    if *value.var_name() == name {
+                    if value.var_name == name {
                         break;
                     } else {
                         self.current_scope.pop();
@@ -443,33 +455,46 @@ impl<'s, 't> TypeChecker<'s, 't> {
                         .into();
         }
 
-        match value {
-            Some(expr) => {
-                let expr_type = match self.get_expr_type(expr) {
-                    Ok(t) => t,
-                    Err(ref mut es) => {
-                        errors.append(es);
-                        return errors;
+        let var_type = match value {
+            Some(expr) => match self.get_expr_type(expr) {
+                Ok(expr_type) => {
+                    if let Some(given_type) = value_type {
+                        if **given_type != *expr_type {
+                            errors.push(Error::new(ErrorKind::TypeError)
+                                            .set_position(expr.first_token.position())
+                                            .set_message(format!("Expected type {}, received {}", given_type, expr_type)));
+                        }
                     }
-                };
+        
+                    if errors.is_empty() {
+                        Some(Rc::clone(&expr_type))
+                    } else {
+                        None
+                    }
+                },
 
-                if let Some(given_type) = value_type {
-                    if *given_type != *expr_type {
-                        
-                    }
+                Err(ref mut es) => {
+                    errors.append(es);
+
+                    None
                 }
             }
 
-            None => {
-
+            None => match value_type {
+                Some(tp) => Some(Rc::clone(tp)),
+                None => None
             }
-        }
+        };
 
+        self.current_scope.push(
+            ScopedValue {
+                var_name: value_name.to_string(),
+                constant: *constant,
+                var_type
+            }
+        );
 
-
-
-
-        vec![]
+        errors
     }
 
 
