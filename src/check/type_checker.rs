@@ -286,7 +286,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
     pub fn get_expr_type(&self, expr: &Expr<'s, 't>) -> TypeResult<'s, 't> {
         /* Checks the type of an expression in a known context */
 
-        match &expr.expr_type {
+        match &expr.expr_kind {
             ExprKind::ArrayIndexing { array, index } => {
                 self.get_array_indexing_type(&array, &index)
             }
