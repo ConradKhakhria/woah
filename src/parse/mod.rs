@@ -4,8 +4,9 @@ mod parse_function;
 mod parse_statement;
 mod parse_type;
 
+pub use parse_class::Attribute as Attribute;
+pub use parse_class::AttrType as AttrType;
 pub use parse_class::Class as Class;
-pub use parse_class::Field as Field;
 pub use parse_class::collect_classes as collect_classes;
 
 pub use parse_expr::Expr as Expr;
