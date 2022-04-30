@@ -39,11 +39,16 @@ impl<'s, 't> Class<'s, 't> {
 
         let name = &tokens[0];
 
-        if let Token::Identifier {..} = name {} else {
+        if let Token::Identifier { string, ..} = name {
+            if !('A'..'Z').contains(&string.chars().next().unwrap()) {
+                errors.push(Error::new(ErrorKind::SyntaxError)
+                                    .set_position(name.position())
+                                    .set_message("Class names must begin with an upper-case character"));
+            }
+        } else {
             errors.push(Error::new(ErrorKind::SyntaxError)
                             .set_position(name.position())
-                            .set_message("Expected class name")
-                            .into());
+                            .set_message("Expected class name"));
         }
 
         let mut public_fields = vec![];

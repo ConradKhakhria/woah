@@ -55,6 +55,13 @@ impl<'s, 't> TypeKind<'s, 't> {
                 let mut args = Vec::new();
                 let mut errors = Vec::new();
 
+                if vec!["int", "float", "char", "str", "bool"].contains(&&tokens[0].to_string()[..]) {
+                    return Error::new(ErrorKind::TypeError)
+                                .set_position(tokens[0].position())
+                                .set_message(format!("Type '{}' cannot have parameters", tokens[0].to_string()))
+                                .into()
+                }
+
                 for i in 1..tokens.len() {
                     match TypeKind::from_tokens(&tokens[i..=i]) {
                         Ok(tp) => args.push(Rc::new(tp)),
