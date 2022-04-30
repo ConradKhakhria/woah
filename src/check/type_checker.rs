@@ -23,10 +23,12 @@ use std::{
 pub struct TypeChecker<'s, 't> {
     classes: HashMap<String, Class<'s, 't>>,
     current_class: String,
-    current_scope: Vec<(String, Rc<TypeKind<'s, 't>>)>
+    current_scope: Vec<(String, bool, Rc<TypeKind<'s, 't>>)>
 }
 
+
 type TypeResult<'s, 't> = Result<Rc<TypeKind<'s, 't>>, Vec<Error>>;
+
 
 impl<'s, 't> TypeChecker<'s, 't> {
     pub fn new(classes: HashMap<String, Class<'s, 't>>) -> Self {
@@ -37,6 +39,24 @@ impl<'s, 't> TypeChecker<'s, 't> {
             current_class: String::new(),
             current_scope: vec![]
         }
+    }
+
+    
+    /* Scope functions */
+
+
+    fn get_scope_entry<T: ToString>(&self, name: &T) -> Option<(&String, bool, Rc<TypeKind<'s, 't>>)> {
+        /* Gets the latest entry in the scope */
+
+        let name_string = name.to_string();
+
+        for (val_name, constant, val_type) in self.current_scope.iter().rev() {
+            if *val_name == name_string {
+                return Some((val_name, *constant, Rc::clone(val_type)));
+            }
+        }
+
+        None
     }
 
 
@@ -246,7 +266,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
         let ident_name = token.to_string();
 
         // checks for a variable with the same name
-        for (val_name, val_type) in self.current_scope().iter() {
+        for (val_name, _, val_type) in self.current_scope().iter() {
             if ident_name == *val_name {
                 return Ok(Rc::clone(val_type));
             }
@@ -304,4 +324,143 @@ impl<'s, 't> TypeChecker<'s, 't> {
     }
 
 
+    /* Statement type checking */
+
+
+    fn check_statement_block_type(&mut self, statements: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
+        /* Checks the types of a list of statements */
+
+        let stack_top_name = self.current_scope.last().map(|(s, _, _)| s.clone());
+        let mut errors = vec![];
+
+        for statement in statements.iter_mut() {
+            errors.append(&mut self.check_statement_type(statement));
+        }
+
+        match stack_top_name {
+            Some(name) => {
+                while let Some((curr_top_name, _, _)) = self.current_scope.last() {
+                    if *curr_top_name == name {
+                        break;
+                    } else {
+                        self.current_scope.pop();
+                    }
+                }
+            }
+
+            None => self.current_scope = vec![]
+        }
+
+        errors
+    }
+
+
+    fn check_assign_type(&self, assigned_to: &mut Expr<'s, 't>, new_value: &mut Expr<'s, 't>) -> Vec<Error> {
+        /* Checks the types of an assignment */
+
+        let mut assigned_to_type_res = self.get_expr_type(assigned_to);
+        let mut new_value_type_res = self.get_expr_type(new_value);
+        let mut errors = vec![];
+
+        if let Err(ref mut es) = assigned_to_type_res {
+            errors.append(es);
+        }
+
+        if let Err(ref mut es) = new_value_type_res {
+            errors.append(es);
+        }
+
+        let (assigned_to_type, new_value_type) = if errors.is_empty() {
+            (assigned_to_type_res.unwrap(), new_value_type_res.unwrap())
+        } else {
+            return errors
+        };
+        
+        if assigned_to_type != new_value_type {
+            Error::new(ErrorKind::TypeError)
+                .set_position(assigned_to.last_token.position())
+                .set_message(format!("expected type {}, received {}", assigned_to_type, new_value_type))
+                .into()
+        } else {
+            vec![]
+        }
+    }
+
+
+    fn check_conditional_type(&mut self, condition: &mut Expr<'s, 't>, block: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
+        /* Checks the types of a conditional expression */
+
+        let mut errors = vec![];
+
+        match self.get_expr_type(condition) {
+            Ok(cond_type) => {
+                if &*cond_type != &TypeKind::Bool {
+                    errors.push(Error::new(ErrorKind::TypeError)
+                                    .set_position(condition.first_token.position())
+                                    .set_message(format!("Expected boolean expression, received {}", cond_type)))
+                }
+            },
+
+            Err(ref mut es) => errors.append(es)
+        }
+
+        errors.append(&mut self.check_statement_block_type(block));
+
+        errors
+    }
+
+
+    fn check_declaration_type(&mut self, declaration: &mut StatementType<'s, 't>) -> Vec<Error> {
+        /* Checks the type of a declaration */
+
+        let (value_name, value_type, value, constant) = match declaration {
+            StatementType::Declare { value_name, value_type, value, constant } => {
+                (value_name, value_type, value, constant)
+            },
+
+            _ => unreachable!()
+        };
+
+        if let Some(_) = self.get_scope_entry(value_name) {
+            return Error::new(ErrorKind::TypeError)
+                        .set_position(value_name.position())
+                        .set_message(format!("value '{}' has already been defined", value_name))
+                        .into();
+        }
+
+        match value {
+            _ => unimplemented!()
+        }
+
+
+
+
+
+        vec![]
+    }
+
+
+    pub fn check_statement_type(&mut self, statement: &mut Statement<'s, 't>) -> Vec<Error> {
+       /* Checks whether a statement obeys the type system
+        *
+        * returns: a list of any type errors that were found
+        * -------
+        */
+    
+        match &mut statement.stmt_type {
+            StatementType::Assign { assigned_to, new_value } => {
+                self.check_assign_type(assigned_to, new_value)
+            }
+
+            StatementType::Conditional { condition, block, .. } => {
+                self.check_conditional_type(condition, block)
+            }
+
+            tp @ StatementType::Declare {..} => {
+                self.check_declaration_type(tp)
+            }
+
+            _ => unimplemented!()
+        }
+    }
 }
