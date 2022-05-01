@@ -1,6 +1,6 @@
 obj SleepSort
-    def sort(xs: [int]) [int]
-        var results: [int] = []
+    def sort(xs: []int) []int
+        var results: []int = []
 
         pool for x in xs
             waitms(x)
