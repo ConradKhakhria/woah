@@ -11,7 +11,7 @@ obj SleepSort
 
 obj Main
     def main(env: Env)
-        let xs     = [6, 7, 1, 4, 2, 3, 4, 9]
+        let xs = [6, 7, 1, 4, 2, 3, 4, 9]
         let sorted = SleepSort.sort(xs)
 
         env.println(sorted)
