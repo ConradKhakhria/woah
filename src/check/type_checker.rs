@@ -8,6 +8,7 @@ use crate::{
         Class,
         Expr,
         ExprKind,
+        Function,
         Statement,
         StatementType,
         TypeKind,
@@ -503,7 +504,7 @@ impl<'s, 't> TypeChecker<'s, 't> {
     fn check_for_loop_type(&mut self, iterator: &Token<'s>, range: &mut Expr<'s, 't>, block: &mut Vec<Statement<'s, 't>>) -> Vec<Error> {
         /* Checks the types of values in a for loop */
 
-        let mut range_type = match self.get_expr_type(range) {
+        let range_type = match self.get_expr_type(range) {
             Ok(tp) => tp,
             Err(es) => return es
         };
@@ -612,5 +613,35 @@ impl<'s, 't> TypeChecker<'s, 't> {
                 self.check_conditional_type(condition, block)
             }
         }
+    }
+
+
+    /* Function type checking */
+
+
+    pub fn check_function_type(&mut self, func: &mut Function<'s, 't>) -> Vec<Error> {
+        /* Checks the types of a function */
+
+        self.current_function_return = match &func.return_type {
+            Some(tp) => Some(Rc::clone(tp)),
+            None => None
+        };
+
+        for arg in func.args.iter() {
+            self.current_scope.push(
+                ScopedValue {
+                    var_name: arg.arg_name.to_string(),
+                    constant: true,
+                    var_type: Some(Rc::clone(&arg.arg_type))
+                }
+            )
+        }
+
+        let errors = self.check_statement_block_type(&mut func.body);
+
+        self.current_scope = vec![];
+
+        errors
+    
     }
 }

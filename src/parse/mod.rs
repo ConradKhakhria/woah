@@ -1,23 +1,23 @@
-mod parse_class;
-mod parse_expr;
-mod parse_function;
-mod parse_statement;
-mod parse_type;
+mod class;
+mod expr;
+mod function;
+mod statement;
+mod typekind;
 
-pub use parse_class::Attribute as Attribute;
-pub use parse_class::AttrType as AttrType;
-pub use parse_class::Class as Class;
-pub use parse_class::collect_classes as collect_classes;
+pub use class::Attribute as Attribute;
+pub use class::AttrType as AttrType;
+pub use class::Class as Class;
+pub use class::collect_classes as collect_classes;
 
-pub use parse_expr::Expr as Expr;
-pub use parse_expr::ExprKind as ExprKind;
-pub use parse_expr::parse_expression as parse_expression;
+pub use expr::Expr as Expr;
+pub use expr::ExprKind as ExprKind;
+pub use expr::parse_expression as parse_expression;
 
-pub use parse_function::Argument as Argument;
-pub use parse_function::Function as Function;
+pub use function::Argument as Argument;
+pub use function::Function as Function;
 
-pub use parse_statement::Statement as Statement;
-pub use parse_statement::StatementType as StatementType;
-pub use parse_statement::parse_statement_block as parse_statement_block;
+pub use statement::Statement as Statement;
+pub use statement::StatementType as StatementType;
+pub use statement::parse_statement_block as parse_statement_block;
 
-pub use parse_type::TypeKind as TypeKind;
+pub use typekind::TypeKind as TypeKind;

@@ -18,7 +18,7 @@ fn main() {
                                     .collect();
 
         for err in es {
-            eprintln!("{}", err.set_line(&source_lines));
+            eprintln!("{}", err.set_line(&source_lines).set_filename(&filename));
         }
     }
 }
@@ -30,15 +30,23 @@ fn hacky_testbed(filename: String) -> Result<(), Vec<crate::error::Error>> {
     let tokens = token::tokenise(&source, &filename, (1, 1))?;
     let lines = line::create_lines(&tokens);
     let classes = parse::collect_classes(&lines)?;
-    let typechecker = check::TypeChecker::new(classes);
+    let mut typechecker = check::TypeChecker::new(classes);
 
     /* Check expr type */
 
-    let expr_string = String::from("Module.add(1, 2).add(1, 2)");
-    let expr_tokens = token::tokenise(&expr_string, "<hi>", (1, 1))?;
-    let expr = parse::parse_expression(&expr_tokens, (1, 1))?;
+    let statements_source = concat!(
 
-    println!("{}", typechecker.get_expr_type(&expr)?);
+        "let x = 5\n",
+        "let y = 6\n",
+        "let pair = Pair.new(x, y)\n",
 
-    Ok(())
+        "if pair.max() == 6\n",
+        "   pair.x = 4\n"
+    
+    ).to_string();
+    let tokens = token::tokenise(&statements_source, &"<hi>", (1, 1))?;
+    let lines = line::create_lines(&tokens);
+    let mut statement_block = parse::parse_statement_block(&lines)?;
+
+    Err(typechecker.check_statement_block_type(&mut statement_block))
 }
