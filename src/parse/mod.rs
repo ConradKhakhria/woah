@@ -6,7 +6,6 @@ mod statement;
 mod typekind;
 
 pub use class::Attribute as Attribute;
-pub use class::AttrType as AttrType;
 pub use class::Class as Class;
 
 pub use expr::Expr as Expr;
