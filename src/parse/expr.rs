@@ -8,13 +8,13 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum ExprKind<'s, 't> {
     Compound {
-        operator: &'t Token<'s>,
+        operator: String,
         left: Box<Expr<'s, 't>>,
         right: Box<Expr<'s, 't>>
     },
 
     Unary {
-        operator: &'t Token<'s>,
+        operator: String,
         operand: Box<Expr<'s, 't>>
     },
 
@@ -34,7 +34,7 @@ pub enum ExprKind<'s, 't> {
 
     AttrRes {
         parent: Box<Expr<'s, 't>>,
-        attr_name: &'t Token<'s>
+        attr_name: String
     },
 
     String,
@@ -181,19 +181,15 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     let mut errors = Vec::new();
     let mut parent = Expr::from_tokens(&tokens[..tokens.len()-2], tokens[0].position());
-    let mut attr_name = match tokens.last().unwrap() {
-        ident@Token::Identifier {..} => Ok(ident),
-        token => Error::new(ErrorKind::SyntaxError)
-                .set_position(token.position())
-                .set_message("Expected syntax <expression>.<name>")
-                .into()
-    };
-
-    if let Err(ref mut es) = parent {
-        errors.append(es);
+    let mut attr_name = tokens.last().unwrap().to_string();
+    
+    if let Token::Identifier {..} = tokens.last().unwrap() {} else {
+        errors.push(Error::new(ErrorKind::SyntaxError)
+                        .set_position(tokens.last().unwrap().position())
+                        .set_message("Expected attribute name"));
     }
 
-    if let Err(ref mut es) = attr_name {
+    if let Err(ref mut es) = parent {
         errors.append(es);
     }
 
@@ -201,7 +197,7 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         Ok(Expr {
             expr_kind: ExprKind::AttrRes {
                 parent: Box::new(parent.unwrap()),
-                attr_name: attr_name.unwrap()
+                attr_name
             },
             expr_type: None,
             first_token: &tokens[0],
@@ -218,19 +214,24 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
     let comparison_operators = vec!["==", "!=", "<", ">", "<=", ">="];
     let arithmetic_operators = vec!["+", "-", "*", "/", "%"];
+    let mut token_strings = vec![];
     let mut errors = Vec::new();
+
+    for token in tokens.iter() {
+        token_strings.push(token.to_string());
+    }
 
     for operator_list in [comparison_operators, arithmetic_operators] {
         for op in operator_list {
             for i in 1..(tokens.len() - 1) {
-                if tokens[i].to_string() == op {
+                if token_strings[i] == op {
                     let left = Expr::from_tokens(&tokens[..i], tokens[0].position());
                     let right = Expr::from_tokens(&tokens[i+1..], tokens[i+1].position());
     
                     return Some(
                         if left.is_ok() && right.is_ok() {
                             let expr_kind = ExprKind::Compound {
-                                operator: &tokens[i],
+                                operator: op.into(),
                                 left: Box::new(left.unwrap()),
                                 right: Box::new(right.unwrap())
                             };
@@ -257,7 +258,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         Some(if let Ok(expr) = Expr::from_tokens(&tokens[1..], tokens[1].position()) {
             Ok(Expr {
                 expr_kind: ExprKind::Unary {
-                    operator: &tokens[0],
+                    operator: tokens[0].to_string(),
                     operand: Box::new(expr)
                 },
                 expr_type: None,
