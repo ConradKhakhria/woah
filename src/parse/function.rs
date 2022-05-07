@@ -8,8 +8,6 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Function<'s, 't> {
-    pub public: bool,
-    pub object_method: bool,
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
     pub return_type: Option<Rc<TypeKind<'s, 't>>>,
@@ -28,15 +26,14 @@ impl<'s, 't> Function<'s, 't> {
                                     .set_position(tokens[0].position())
                                     .set_message("Invalid function definition syntax");
 
-        let offset = if tokens[0].to_string() == "pub" { 1 } else { 0 };
 
-        if tokens.len() < 3 + offset || tokens[offset].to_string() != "def" || line.line_derivs.is_empty() {
+        if tokens.len() < 3 || tokens[0].to_string() != "def" || line.line_derivs.is_empty() {
             errors.push(format_error.clone());
         }
 
         /* Get function name */
 
-        let name = &tokens[1 + offset];
+        let name = &tokens[1];
 
         if let Token::Identifier {..} = name {
             // ok
@@ -46,18 +43,18 @@ impl<'s, 't> Function<'s, 't> {
 
         /* Get function arguments */
 
-        let (args, object_method) = match parse_arguments(&tokens[2 + offset]) {
-            Ok((a, om)) => (a, om),
+        let args = match parse_arguments(&tokens[2]) {
+            Ok(args) => args,
             Err(ref mut es) => {
                 errors.append(es);
-                (vec![], false) // placeholder
+                vec![] // placeholder
             }
         };
 
         /* Get function return type */
 
-        let return_type = if tokens.len() > 3 + offset {
-            match TypeKind::from_tokens(&tokens[3 + offset..]) {
+        let return_type = if tokens.len() > 3 {
+            match TypeKind::from_tokens(&tokens[3..]) {
                 Ok(tp) => Some(tp.rc()),
     
                 Err(ref mut es) => {
@@ -79,8 +76,6 @@ impl<'s, 't> Function<'s, 't> {
 
         if errors.is_empty() {
             Ok(Function {
-                public: offset == 1,
-                object_method,
                 name,
                 args,
                 return_type,
@@ -131,17 +126,11 @@ impl<'s, 't> Into<TypeKind<'s, 't>> for &Function<'s, 't> {
 /* Function arguments */
 
 
-fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<(Vec<Argument<'s, 't>>, bool), Vec<Error>> {
-   /* Attempts to parse a list of function arguments
-    *
-    * returns: a tuple containing:
-    * - the function's arguments
-    * - whether or not the function is an object method
-    */
+fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s, 't>>, Vec<Error>> {
+   /* Attempts to parse a list of function arguments */
 
     let mut args = vec![];
     let mut errors = vec![];
-    let mut object_method = false;
 
     let args_block = match args_block {
         Token::Block { contents, open_delim, .. } => {
@@ -164,18 +153,14 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<(Vec<Argument<'s
     let arg_indices = Token::split_tokens(&args_block[..], |t| t.to_string() == ",");
 
     for (start, end) in arg_indices {
-        if start == 0 && end == 1 && args_block[0].to_string() == "self" {
-            object_method = true;
-        } else {
-            match Argument::from_tokens(&args_block[start..end]) {
-                Ok(arg) => args.push(arg),
-                Err(ref mut es) => errors.append(es)
-            }
+        match Argument::from_tokens(&args_block[start..end]) {
+            Ok(arg) => args.push(arg),
+            Err(ref mut es) => errors.append(es)
         }
     }
 
     if errors.is_empty() {
-        Ok((args, object_method))
+        Ok(args)
     } else {
         Err(errors)
     }
