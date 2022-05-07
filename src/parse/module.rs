@@ -33,7 +33,7 @@ impl Module {
 
         let source = std::fs::read_to_string(path).unwrap();
         let source_lines: Vec<&str> = source.lines().collect();
-        let tokens = match tokenise(&source, filename, (1, 1)) {
+        let tokens = match tokenise(&source, filename) {
             Ok(ts) => ts,
             Err(es) => {
                 let with_line = es.iter().map(|e| e.clone().set_line(&source_lines)).collect();

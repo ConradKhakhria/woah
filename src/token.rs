@@ -294,10 +294,10 @@ impl<'f> Lexer<'f> {
     }
 }
 
-pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str, pos: (usize, usize)) -> Result<Vec<Token<'s>>, Vec<Error>> {
+pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str) -> Result<Vec<Token<'s>>, Vec<Error>> {
     /* Tokenises a source string */
 
-    let mut lexer = Lexer { filename, line_no: pos.0, col_no: pos.1 };
+    let mut lexer = Lexer { filename, line_no: 1, col_no: 1 };
     let token_strings = lexer.create_token_strings(source);
     let mut nested_tokens = lexer.build_nested(source, token_strings)?;
 
