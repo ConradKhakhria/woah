@@ -7,16 +7,16 @@ use crate::{
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct Function<'s, 't> {
-    pub name: &'t Token<'s>,
-    pub args: Vec<Argument<'s, 't>>,
+pub struct Function {
+    pub name: String,
+    pub args: Vec<Argument>,
     pub return_type: Option<Rc<TypeKind>>,
-    pub body: Vec<Statement<'s, 't>>
+    pub body: Vec<Statement>
 }
 
 
-impl<'s, 't> Function<'s, 't> {
-    pub fn from_line(line: &Line<'s, 't>) -> Result<Function<'s, 't>, Vec<Error>> {
+impl Function {
+    pub fn from_line(line: &Line) -> Result<Function, Vec<Error>> {
         /* Parses a function from a nested line */
 
         let tokens = line.line_tokens;
@@ -26,16 +26,15 @@ impl<'s, 't> Function<'s, 't> {
                                     .set_position(tokens[0].position())
                                     .set_message("Invalid function definition syntax");
 
-
         if tokens.len() < 3 || tokens[0].to_string() != "def" || line.line_derivs.is_empty() {
             errors.push(format_error.clone());
         }
 
         /* Get function name */
 
-        let name = &tokens[1];
+        let name = tokens[1].to_string();
 
-        if let Token::Identifier {..} = name {
+        if let Token::Identifier {..} = &tokens[1] {
             // ok
         } else if errors.len() == 0 {
             errors.push(format_error.clone());
@@ -87,7 +86,7 @@ impl<'s, 't> Function<'s, 't> {
     }
 }
 
-impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
+impl Into<TypeKind> for Function {
     fn into(self) -> TypeKind {
         let mut args = vec![];
 
@@ -103,7 +102,7 @@ impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
+impl Into<TypeKind> for &Function {
     fn into(self) -> TypeKind {
         let mut args = vec![];
 
@@ -126,7 +125,7 @@ impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
 /* Function arguments */
 
 
-fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s, 't>>, Vec<Error>> {
+fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument>, Vec<Error>> {
    /* Attempts to parse a list of function arguments */
 
     let mut args = vec![];
@@ -167,19 +166,19 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
 }
 
 #[derive(Debug)]
-pub struct Argument<'s, 't> {
-    pub arg_name: &'t Token<'s>,
+pub struct Argument {
+    pub arg_name: String,
     pub arg_type: Rc<TypeKind>
 }
 
 
-impl<'s, 't> Argument<'s, 't> {
-    fn from_tokens(tokens: &'t [Token<'s>]) -> Result<Argument<'s, 't>, Vec<Error>> {
+impl Argument {
+    fn from_tokens(tokens: &[Token]) -> Result<Argument, Vec<Error>> {
         /* Parses an argument */
 
-        let arg_name = &tokens[0];
+        let arg_name = tokens[0].to_string();
 
-        if let Token::Identifier {..} = arg_name { } else {
+        if let Token::Identifier {..} = &tokens[0] { } else {
             return Error::new(ErrorKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Expected an argument name")

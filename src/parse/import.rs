@@ -8,15 +8,15 @@ use crate::{
 use derive_getters::Getters;
 
 #[derive(Getters)]
-pub struct Import<'s, 't> {
-    path: Vec<&'s str>,
-    mod_name: &'s str,
-    module: Module<'s, 't>
+pub struct Import {
+    path: Vec<String>,
+    mod_name: String,
+    module: Module
 }
 
 
-impl<'s, 't> Import<'s, 't> {
-    pub fn from_line(line: &Line<'s, 't>) -> Result<Self, Vec<Error>> {
+impl Import {
+    pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
         /* Parses an import from a line */
 
         let path_tokens = &line.line_tokens[1..];

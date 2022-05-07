@@ -6,57 +6,57 @@ use crate::{
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub enum ExprKind<'s, 't> {
+pub enum ExprKind {
     Compound {
         operator: String,
-        left: Box<Expr<'s, 't>>,
-        right: Box<Expr<'s, 't>>
+        left: Box<Expr>,
+        right: Box<Expr>
     },
 
     Unary {
         operator: String,
-        operand: Box<Expr<'s, 't>>
+        operand: Box<Expr>
     },
 
     FunctionCall {
-        function: Box<Expr<'s, 't>>,
-        args: Vec<Expr<'s, 't>>
+        function: Box<Expr>,
+        args: Vec<Expr>
     },
 
     ArrayIndexing {
-        array: Box<Expr<'s, 't>>,
-        index: Box<Expr<'s, 't>>
+        array: Box<Expr>,
+        index: Box<Expr>
     },
 
     ArrayLiteral {
-        elems: Vec<Expr<'s, 't>>
+        elems: Vec<Expr>
     },
 
     AttrRes {
-        parent: Box<Expr<'s, 't>>,
+        parent: Box<Expr>,
         attr_name: String
     },
 
-    String,
+    String(String),
 
-    Integer,
+    Integer(String),
 
-    Float,
+    Float(String),
 
-    Identifier,
+    Identifier(String),
 }
 
 #[derive(Debug)]
-pub struct Expr<'s, 't> {
-    pub expr_kind: ExprKind<'s, 't>,
+pub struct Expr {
+    pub expr_kind: ExprKind,
     pub expr_type: Option<Rc<TypeKind>>,
-    pub first_token: &'t Token<'s>,
-    pub last_token: &'t Token<'s>
+    pub first_position: (usize, usize),
+    pub last_position: (usize, usize)
 }
 
 
-impl<'s, 't> Expr<'s, 't> {
-    pub fn from_tokens(tokens: &'t [Token<'s>], pos: (usize, usize)) -> Result<Self, Vec<Error>> {
+impl Expr {
+    pub fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Self, Vec<Error>> {
         /* Parses an expression from a list of tokens */
 
         if tokens.is_empty() {
@@ -82,10 +82,10 @@ impl<'s, 't> Expr<'s, 't> {
 
 /* Parsing */
 
-type ParseOption<'s, 't> = Option<Result<Expr<'s, 't>, Vec<Error>>>;
+type ParseOption = Option<Result<Expr, Vec<Error>>>;
 
 
-fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
+fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
     /* Parses an expression consisting of a single token */
 
     if tokens.len() != 1 {
@@ -93,17 +93,17 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
     }
 
     let expr_kind = match &tokens[0] {
-        Token::Identifier {..} => ExprKind::Identifier,
+        Token::Identifier {..} => ExprKind::Identifier(tokens[0].to_string()),
 
         Token::Number { string, ..} => {
             if string.contains(".") {
-                ExprKind::Float
+                ExprKind::Float(string.to_string())
             } else {
-                ExprKind::Integer
+                ExprKind::Integer(string.to_string())
             }
         },
 
-        Token::String {..} => ExprKind::String,
+        Token::String {..} => ExprKind::String(tokens[0].to_string()),
 
         Token::Symbol { string, .. } => {
             return Some(
@@ -122,8 +122,8 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
                     Ok(es) => Ok(Expr {
                         expr_kind: ExprKind::ArrayLiteral { elems: es },
                         expr_type: None,
-                        first_token: &tokens[0],
-                        last_token: contents.last().unwrap_or(&tokens[0])
+                        first_position: tokens[0].position(),
+                        last_position: contents.last().unwrap_or(&tokens[0]).position()
                     }),
                     Err(es) => Err(es)
                 })
@@ -144,14 +144,14 @@ fn parse_atomic_expression<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, '
         Expr {
             expr_kind,
             expr_type: None,
-            first_token: &tokens[0],
-            last_token: &tokens[0]
+            first_position: tokens[0].position(),
+            last_position: tokens[0].position()
         }
     ))
 }
 
 
-fn parse_array<'s, 't>(contents: &'t [Token<'s>], pos: (usize, usize)) -> Result<Vec<Expr<'s, 't>>, Vec<Error>> {
+fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec<Error>> {
     /* Parses an array literal */
 
     let mut values = Vec::new();
@@ -172,7 +172,7 @@ fn parse_array<'s, 't>(contents: &'t [Token<'s>], pos: (usize, usize)) -> Result
 }
 
 
-fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
+fn parse_attr_res(tokens: &[Token]) -> ParseOption {
     /* Parses an attribute resolution */
 
     if tokens.len() < 3 || tokens[tokens.len() - 2].to_string() != "." {
@@ -200,8 +200,8 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                 attr_name
             },
             expr_type: None,
-            first_token: &tokens[0],
-            last_token: tokens.last().unwrap()
+            first_position: tokens[0].position(),
+            last_position: tokens.last().unwrap().position()
         })
     } else {
         Err(errors)
@@ -209,7 +209,7 @@ fn parse_attr_res<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
+fn parse_compound(tokens: &[Token]) -> ParseOption {
     /* Parses a compound expression */
 
     let comparison_operators = vec!["==", "!=", "<", ">", "<=", ">="];
@@ -239,8 +239,8 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                             Ok(Expr {
                                 expr_kind,
                                 expr_type: None,
-                                first_token: &tokens[0],
-                                last_token: tokens.last().unwrap()
+                                first_position: tokens[0].position(),
+                                last_position: tokens.last().unwrap().position()
                             })
                         } else {
                             let _ = left.map_err(|mut es| errors.append(&mut es));
@@ -262,8 +262,8 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
                     operand: Box::new(expr)
                 },
                 expr_type: None,
-                first_token: &tokens[0],
-                last_token: tokens.last().unwrap()
+                first_position: tokens[0].position(),
+                last_position: tokens.last().unwrap().position()
             })
         } else {
             Error::new(ErrorKind::SyntaxError)
@@ -277,7 +277,7 @@ fn parse_compound<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_funcall<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
+fn parse_funcall(tokens: &[Token]) -> ParseOption {
     /* Parses a function call */
 
     let tokens_len = tokens.len();
@@ -318,14 +318,14 @@ fn parse_funcall<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         Expr {
             expr_kind: ExprKind::FunctionCall { function, args },
             expr_type: None,
-            first_token: tokens.first().unwrap(),
-            last_token:  tokens.last().unwrap()
+            first_position: tokens.first().unwrap().position(),
+            last_position:  tokens.last().unwrap().position()
         }
     ))
 }
 
 
-fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
+fn parse_indexing(tokens: &[Token]) -> ParseOption {
     /* Parses an array indexing */
 
     let tokens_len = tokens.len();
@@ -353,8 +353,8 @@ fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
         Expr {
             expr_kind: ExprKind::ArrayIndexing { array, index },
             expr_type: None,
-            first_token: tokens.first().unwrap(),
-            last_token: tokens.last().unwrap()
+            first_position: tokens.first().unwrap().position(),
+            last_position: tokens.last().unwrap().position()
         }
     ))
 }
@@ -362,7 +362,7 @@ fn parse_indexing<'s, 't>(tokens: &'t [Token<'s>]) -> ParseOption<'s, 't> {
 
 // For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
 // as a function variable
-const PARSE_OPTIONS: [for<'s, 't> fn(&'t [Token<'s>]) -> Option<Result<Expr<'s, 't>, Vec<Error>>>; 5] = [
+const PARSE_OPTIONS: [for<'s, 't> fn(&[Token]) -> Option<Result<Expr, Vec<Error>>>; 5] = [
     parse_atomic_expression,
     parse_compound,
     parse_funcall,

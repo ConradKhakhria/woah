@@ -10,14 +10,14 @@ use std::{
     path::Path
 };
 
-pub struct Module<'s, 't> {
+pub struct Module {
     name: String,
-    functions: HashMap<&'s str, Function<'s, 't>>,
-    imports: Vec<Import<'s, 't>>
+    functions: HashMap<String, Function>,
+    imports: Vec<Import>
 }
 
 
-impl<'s, 't> Module<'s, 't> {
+impl Module {
     pub fn from_filepath(path: &Path) -> Result<Self, Vec<Error>> {
         /* Reads and parses a module from a file */
 

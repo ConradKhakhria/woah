@@ -153,7 +153,7 @@ impl TypeKind {
 
         if errors.is_empty() {
             Ok(TypeKind::HigherOrder {
-                name: &tokens[0],
+                name: tokens[0].to_string(),
                 args: type_parameters
             })
         } else {
