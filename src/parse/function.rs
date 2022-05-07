@@ -187,6 +187,7 @@ pub struct Argument<'s, 't> {
     pub arg_type: Rc<TypeKind<'s, 't>>
 }
 
+
 impl<'s, 't> Argument<'s, 't> {
     fn from_tokens(tokens: &'t [Token<'s>]) -> Result<Argument<'s, 't>, Vec<Error>> {
         /* Parses an argument */
