@@ -35,6 +35,7 @@ pub enum TypeKind<'s, 't> {
     }
 }
 
+
 impl<'s, 't> TypeKind<'s, 't> {
     /* Initialisation */
 
@@ -205,7 +206,17 @@ impl<'s, 't> TypeKind<'s, 't> {
                     .into()
         }
     }
+
+
+    /* Utils */
+
+    pub fn rc(self) -> Rc<TypeKind<'s, 't>> {
+        /* Wraps self in an Rc<> */
+
+        Rc::new(self)
+    }
 }
+
 
 impl<'s, 't> PartialEq for TypeKind<'s, 't> {
     fn eq(&self, other: &Self) -> bool {
@@ -236,6 +247,7 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
         }
     }   
 }
+
 
 impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
