@@ -7,12 +7,13 @@ use crate::{
     },
     token::tokenise
 };
+use derive_getters::Getters;
 use std::{
     collections::HashMap,
     path::Path
 };
 
-#[derive(Debug)]
+#[derive(Debug, Getters)]
 pub struct Module {
     name: String,
     functions: HashMap<String, Function>,
