@@ -181,7 +181,7 @@ fn parse_attr_res(tokens: &[Token]) -> ParseOption {
 
     let mut errors = Vec::new();
     let mut parent = Expr::from_tokens(&tokens[..tokens.len()-2], tokens[0].position());
-    let mut attr_name = tokens.last().unwrap().to_string();
+    let attr_name = tokens.last().unwrap().to_string();
     
     if let Token::Identifier {..} = tokens.last().unwrap() {} else {
         errors.push(Error::new(ErrorKind::SyntaxError)
