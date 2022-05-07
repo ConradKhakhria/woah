@@ -66,9 +66,9 @@ impl<'s, 't> Class<'s, 't> {
         for line in line.line_derivs.iter() {
             match Attribute::from_line(line) {
                 Ok(attr) => {
-                    let attr_name = &attr.attr_name;
+                    let attr_name = attr.attr_name.clone();
 
-                    if let Some(_) = attributes.insert(attr.attr_name, attr) {
+                    if let Some(_) = attributes.insert(attr.attr_name.clone(), attr) {
                         errors.push(Error::new(ErrorKind::NameError)
                                         .set_position(line.line_tokens[0].position())
                                         .set_message(format!("Cannot have multiple attributes called '{}'", attr_name)));
@@ -156,10 +156,10 @@ impl<'s, 't> Attribute<'s, 't> {
         }
 
         let attr_type = match TypeKind::from_tokens(&tokens[index + 2..]) {
-            Ok(tp) => Rc::new(tp),
+            Ok(tp) => tp.rc(),
             Err(ref mut es) => {
                 errors.append(es);
-                Rc::new(TypeKind::Bool) // placeholder
+                TypeKind::Bool.rc() // placeholder
             }
         };
 
