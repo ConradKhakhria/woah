@@ -1,3 +1,5 @@
+use std::string::ToString;
+
 #[derive(Clone, Debug)]
 pub struct Error {
     message: Option<String>,
@@ -102,7 +104,7 @@ impl Error {
 
     /* Set attributes */
 
-    pub fn set_filename<T: std::string::ToString>(mut self, filename: &T) -> Self {
+    pub fn set_filename<T: ToString>(mut self, filename: &T) -> Self {
         /* Sets the error's filename */
 
         if let None = self.filename {
@@ -113,7 +115,7 @@ impl Error {
     }
 
 
-    pub fn set_line(mut self, lines: &Vec<String>) -> Self {
+    pub fn set_line<T: ToString>(mut self, lines: &Vec<T>) -> Self {
         /* Sets the line the error occurs on, with formatting */
 
         if let None = self.formatted_code_line {
@@ -130,7 +132,7 @@ impl Error {
                          {} | {}\n \
                          {} |{}^^^",
                         line_number_buffer,
-                        line_number_string, line,
+                        line_number_string, line.to_string(),
                         line_number_buffer, indicator_buffer
                     ));
                 }
