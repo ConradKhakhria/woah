@@ -2,7 +2,7 @@ use crate::{
     error::{ Error, ErrorKind },
     token::Token,
     line::Line,
-    parse::{ Expr, parse_expression, TypeKind }
+    parse::{ Expr, TypeKind }
 };
 use std::rc::Rc;
 
@@ -145,7 +145,7 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 
     let value = match assign_index {
         Some(i) => {
-            match parse_expression(&tokens[i+1..], tokens[i+1].position()) {
+            match Expr::from_tokens(&tokens[i+1..], tokens[i+1].position()) {
                 Ok(expr) => Some(expr),
                 Err(ref mut es) => {
                     errors.append(es);
@@ -196,8 +196,8 @@ fn parse_assignment<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
         }
     }
 
-    let mut assigned_to = parse_expression(&tokens[..eq_index], tokens[0].position());
-    let mut new_value = parse_expression(&tokens[eq_index+1..], tokens[eq_index + 1].position());
+    let mut assigned_to = Expr::from_tokens(&tokens[..eq_index], tokens[0].position());
+    let mut new_value = Expr::from_tokens(&tokens[eq_index+1..], tokens[eq_index + 1].position());
 
     if let Err(ref mut es) = &mut assigned_to {
         errors.append(es);
@@ -240,7 +240,7 @@ fn parse_conditional<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                         .into());
     }
 
-    let mut condition = parse_expression(&tokens[1..], tokens[1].position());
+    let mut condition = Expr::from_tokens(&tokens[1..], tokens[1].position());
     let mut block = parse_statement_block(&line.line_derivs);
 
     if let Err(ref mut es) = condition {
@@ -337,7 +337,7 @@ fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     }
 
     let iterator_name = &tokens[1];
-    let mut range = parse_expression(&tokens[3..], tokens[3].position());
+    let mut range = Expr::from_tokens(&tokens[3..], tokens[3].position());
 
     /* For loop body */
 
@@ -388,7 +388,7 @@ fn parse_return<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     let value = match &tokens[1..] {
         [] => None,
         ts => {
-            match parse_expression(ts, ts[0].position()) {
+            match Expr::from_tokens(ts, ts[0].position()) {
                 Ok(expr) => Some(expr),
                 Err(es) => return Some(Err(es))
             }
@@ -415,7 +415,7 @@ fn parse_expr<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                         .into());
     }
 
-    Some(match parse_expression(tokens, tokens[0].position()) {
+    Some(match Expr::from_tokens(tokens, tokens[0].position()) {
         Ok(expr) => Ok(Statement {
             stmt_type: StatementType::RawExpr { expr },
             first_token: &tokens[0],
