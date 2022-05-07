@@ -58,7 +58,7 @@ impl<'s, 't> Function<'s, 't> {
 
         let return_type = if tokens.len() > 3 + offset {
             match TypeKind::from_tokens(&tokens[3 + offset..]) {
-                Ok(tp) => Some(Rc::new(tp)),
+                Ok(tp) => Some(tp.rc()),
     
                 Err(ref mut es) => {
                     errors.append(es);
@@ -207,7 +207,7 @@ impl<'s, 't> Argument<'s, 't> {
                         .into();
         }
 
-        let arg_type = Rc::new(TypeKind::from_tokens(&tokens[2..])?);
+        let arg_type = TypeKind::from_tokens(&tokens[2..])?.rc();
 
         Ok(Argument { arg_name, arg_type })
     }
