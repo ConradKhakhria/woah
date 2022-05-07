@@ -134,6 +134,26 @@ impl<'s, 't> Class<'s, 't> {
 }
 
 
+impl<'s, 't> Into<TypeKind<'s, 't>> for Class<'s, 't> {
+    fn into(self) -> TypeKind<'s, 't> {
+        TypeKind::HigherOrder {
+            name: self.name,
+            args: vec![]
+        }
+    }
+}
+
+
+impl<'s, 't> Into<TypeKind<'s, 't>> for &Class<'s, 't> {
+    fn into(self) -> TypeKind<'s, 't> {
+        TypeKind::HigherOrder {
+            name: self.name,
+            args: vec![]
+        }
+    }
+}
+
+
 /* Attributes
  *
  * All of a classes attributes are stored in an Attribute struct,
