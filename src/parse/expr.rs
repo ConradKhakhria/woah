@@ -49,7 +49,7 @@ pub enum ExprKind<'s, 't> {
 #[derive(Debug)]
 pub struct Expr<'s, 't> {
     pub expr_kind: ExprKind<'s, 't>,
-    pub expr_type: Option<Rc<TypeKind<'s, 't>>>,
+    pub expr_type: Option<Rc<TypeKind>>,
     pub first_token: &'t Token<'s>,
     pub last_token: &'t Token<'s>
 }
