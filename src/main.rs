@@ -1,9 +1,10 @@
-use std::path::Path;
-
+mod analysis;
 mod error;
 mod line;
 mod parse;
 mod token;
+
+use std::path::Path;
 
 fn main() {
     let filename = std::env::args()
