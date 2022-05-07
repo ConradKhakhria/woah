@@ -5,7 +5,7 @@ use crate::{
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub enum TypeKind<'s, 't> {
+pub enum TypeKind {
     Int,
 
     Float,
@@ -20,26 +20,26 @@ pub enum TypeKind<'s, 't> {
 
     EmptyList,
 
-    MutRef(Rc<TypeKind<'s, 't>>),
+    MutRef(Rc<TypeKind>),
 
-    List(Rc<TypeKind<'s, 't>>),
+    List(Rc<TypeKind>),
 
     HigherOrder {
-        name: &'t Token<'s>,
-        args: Vec<Rc<TypeKind<'s, 't>>>
+        name: String,
+        args: Vec<Rc<TypeKind>>
     },
 
     Function {
-        args: Vec<Rc<TypeKind<'s, 't>>>,
-        return_type: Option<Rc<TypeKind<'s, 't>>>
+        args: Vec<Rc<TypeKind>>,
+        return_type: Option<Rc<TypeKind>>
     }
 }
 
 
-impl<'s, 't> TypeKind<'s, 't> {
+impl TypeKind {
     /* Initialisation */
 
-    fn parse_head_block_type(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
+    fn parse_head_block_type(tokens: &[Token]) -> Result<Self, Vec<Error>> {
         /* Parses a type which begins with a bracketed block */
 
         match tokens {
@@ -55,9 +55,7 @@ impl<'s, 't> TypeKind<'s, 't> {
                         .set_message("List types must have the syntax []<type>")
                         .into()
                 } else {
-                    Ok(TypeKind::List(Rc::new(
-                        Self::from_tokens(rest)?
-                    )))
+                    Ok(TypeKind::List(Self::from_tokens(rest)?.rc()))
                 }
             },
 
@@ -80,11 +78,11 @@ impl<'s, 't> TypeKind<'s, 't> {
                         if contents.len() == 0 {
                             Ok(None)
                         } else {
-                            TypeKind::from_tokens(&rest[1..]).map(|t| Some(Rc::new(t)))
+                            TypeKind::from_tokens(&rest[1..]).map(|t| Some(t.rc()))
                         }
                     }
 
-                    _ => TypeKind::from_tokens(&rest[1..]).map(|t| Some(Rc::new(t)))
+                    _ => TypeKind::from_tokens(&rest[1..]).map(|t| Some(t.rc()))
                 };
 
                 if let Err(ref mut es) = return_type {
@@ -96,7 +94,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 
                 for (start, end) in arg_type_slice {
                     match TypeKind::from_tokens(&contents[start..end]) {
-                        Ok(tp) => arg_types.push(Rc::new(tp)),
+                        Ok(tp) => arg_types.push(tp.rc()),
                         Err(ref mut es) => errors.append(es)
                     }
                 }
@@ -119,7 +117,7 @@ impl<'s, 't> TypeKind<'s, 't> {
     }
 
 
-    fn parse_head_identifier_type(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
+    fn parse_head_identifier_type(tokens: &[Token]) -> Result<Self, Vec<Error>> {
         /* Parses a type whose first token is an identifier */
 
         let head_name = tokens[0].to_string();
@@ -148,7 +146,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 
         for i in 1..tokens.len() {
             match Self::from_tokens(&tokens[i..=i]) {
-                Ok(tp) => type_parameters.push(Rc::new(tp)),
+                Ok(tp) => type_parameters.push(tp.rc()),
                 Err(ref mut es) => errors.append(es)
             }
         }
@@ -164,12 +162,12 @@ impl<'s, 't> TypeKind<'s, 't> {
     }
     
 
-    fn parse_head_symbol_type(symbol: &str, tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
+    fn parse_head_symbol_type(symbol: &str, tokens: &[Token]) -> Result<Self, Vec<Error>> {
         /* Parses a type whose first token is a symbol */
 
         if symbol == "@" {
             Ok(TypeKind::MutRef(
-                Rc::new(TypeKind::from_tokens(&tokens[1..])?)
+                TypeKind::from_tokens(&tokens[1..])?.rc()
             ))
         } else {
             Error::new(ErrorKind::SyntaxError)
@@ -180,7 +178,7 @@ impl<'s, 't> TypeKind<'s, 't> {
     }
 
 
-    pub fn from_tokens(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
+    pub fn from_tokens(tokens: &[Token]) -> Result<Self, Vec<Error>> {
         /* Parses a type */
 
         match tokens {
@@ -210,7 +208,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 
     /* Utils */
 
-    pub fn rc(self) -> Rc<TypeKind<'s, 't>> {
+    pub fn rc(self) -> Rc<TypeKind> {
         /* Wraps self in an Rc<> */
 
         Rc::new(self)
@@ -218,7 +216,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 }
 
 
-impl<'s, 't> PartialEq for TypeKind<'s, 't> {
+impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TypeKind::Bool, TypeKind::Bool) => true,
@@ -249,7 +247,7 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
 }
 
 
-impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
+impl std::fmt::Display for TypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string: String = match self {
             TypeKind::Bool => "bool".into(),
