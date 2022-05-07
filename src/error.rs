@@ -11,7 +11,8 @@ pub struct Error {
 pub enum ErrorKind {
     NameError,
     SyntaxError,
-    TypeError
+    TypeError,
+    UnimplementedError
 }
 
 impl std::fmt::Display for Error {
@@ -68,9 +69,10 @@ impl<T> Into<Result<T, Vec<Error>>> for Error {
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
-            ErrorKind::NameError   => "Name Error",
-            ErrorKind::SyntaxError => "Syntax Error",
-            ErrorKind::TypeError   => "Type Error"
+            ErrorKind::NameError          => "Name Error",
+            ErrorKind::SyntaxError        => "Syntax Error",
+            ErrorKind::TypeError          => "Type Error",
+            ErrorKind::UnimplementedError => "Unimplemented Error"
         })
     }
 }
