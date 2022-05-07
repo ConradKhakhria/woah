@@ -10,7 +10,7 @@ use std::rc::Rc;
 pub struct Function<'s, 't> {
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
-    pub return_type: Option<Rc<TypeKind<'s, 't>>>,
+    pub return_type: Option<Rc<TypeKind>>,
     pub body: Vec<Statement<'s, 't>>
 }
 
@@ -87,8 +87,8 @@ impl<'s, 't> Function<'s, 't> {
     }
 }
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for Function<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
+    fn into(self) -> TypeKind {
         let mut args = vec![];
 
         for arg in self.args.iter() {
@@ -103,8 +103,8 @@ impl<'s, 't> Into<TypeKind<'s, 't>> for Function<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for &Function<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
+    fn into(self) -> TypeKind {
         let mut args = vec![];
 
         for arg in self.args.iter() {
@@ -169,7 +169,7 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument<'s,
 #[derive(Debug)]
 pub struct Argument<'s, 't> {
     pub arg_name: &'t Token<'s>,
-    pub arg_type: Rc<TypeKind<'s, 't>>
+    pub arg_type: Rc<TypeKind>
 }
 
 
