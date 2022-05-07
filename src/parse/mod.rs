@@ -10,7 +10,6 @@ pub use class::Class as Class;
 
 pub use expr::Expr as Expr;
 pub use expr::ExprKind as ExprKind;
-pub use expr::parse_expression as parse_expression;
 
 pub use function::Argument as Argument;
 pub use function::Function as Function;
