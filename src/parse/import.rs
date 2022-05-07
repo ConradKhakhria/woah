@@ -7,7 +7,7 @@ use crate::{
 
 use derive_getters::Getters;
 
-#[derive(Getters)]
+#[derive(Debug, Getters)]
 pub struct Import {
     path: Vec<String>,
     mod_name: String,
