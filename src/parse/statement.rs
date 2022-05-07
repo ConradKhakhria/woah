@@ -15,7 +15,7 @@ pub enum StatementType<'s, 't> {
 
     Declare {
         value_name: &'t Token<'s>,
-        value_type: Option<Rc<TypeKind<'s, 't>>>,
+        value_type: Option<Rc<TypeKind>>,
         value: Option<Expr<'s, 't>>,
         constant: bool
     },
