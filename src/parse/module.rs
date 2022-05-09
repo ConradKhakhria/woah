@@ -7,7 +7,6 @@ use crate::{
     },
     token::tokenise
 };
-use derive_getters::Getters;
 use std::{
     collections::HashMap,
     path::Path,
@@ -86,7 +85,7 @@ impl Module {
         }
     }
 
-    
+
     pub fn rc(self) -> Rc<Self> {
         /* Wraps self in an Rc */
 
