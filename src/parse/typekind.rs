@@ -12,7 +12,7 @@ pub enum TypeKind {
 
     Char,
 
-    Class(String),
+    Module(String),
 
     String,
 
@@ -221,7 +221,7 @@ impl PartialEq for TypeKind {
         match (self, other) {
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
-            (TypeKind::Class(x), TypeKind::Class(y)) => x == y,
+            (TypeKind::Module(x), TypeKind::Module(y)) => x == y,
             (TypeKind::Float, TypeKind::Float) => true,
             (TypeKind::Int, TypeKind::Int) => true,
             (TypeKind::EmptyList, TypeKind::EmptyList) => true,
@@ -252,7 +252,7 @@ impl std::fmt::Display for TypeKind {
         let string: String = match self {
             TypeKind::Bool => "bool".into(),
             TypeKind::Char => "char".into(),
-            TypeKind::Class(name) => format!("<Class '{}'>", name),
+            TypeKind::Module(name) => format!("<Class '{}'>", name),
             TypeKind::EmptyList => "<empty list>".into(),
             TypeKind::Float => "float".into(),
             TypeKind::Function { args, return_type } => {
