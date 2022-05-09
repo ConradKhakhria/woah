@@ -12,7 +12,7 @@ fn main() {
                     .next()
                     .expect("No file supplied");
 
-    let mut root_module = match parse::Module::from_filepath(Path::new(&filename)) {
+    let root_module = match parse::Module::from_filepath(Path::new(&filename)) {
         Ok(m) => m,
         Err(es) => {
             for e in es {
@@ -24,7 +24,7 @@ fn main() {
     };
 
     let mut static_analyser = analysis::Analyser::new();
-    let errors = static_analyser.analyse_module(&mut root_module);
+    let errors = static_analyser.analyse_module(&root_module);
 
     println!("{:#?}", errors);
 }
