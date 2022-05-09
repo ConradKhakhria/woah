@@ -115,3 +115,25 @@ impl Into<Rc<TypeKind>> for Module {
         tk.rc()
     }
 }
+
+
+impl Into<TypeKind> for &Module {
+    fn into(self) -> TypeKind {
+        TypeKind::HigherOrder {
+            name: self.name.clone(),
+            args: vec![]
+        }
+    }
+}
+
+
+impl Into<Rc<TypeKind>> for &Module {
+    fn into(self) -> Rc<TypeKind> {
+        let tk = TypeKind::HigherOrder {
+            name: self.name.clone(),
+            args: vec![]
+        };
+
+        tk.rc()
+    }
+}
