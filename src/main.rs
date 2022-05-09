@@ -23,7 +23,7 @@ fn main() {
         }
     };
 
-    let static_analyser = analysis::Analyser::new();
+    let mut static_analyser = analysis::Analyser::new();
     let errors = static_analyser.analyse_module(&mut root_module);
 
     println!("{:#?}", errors);
