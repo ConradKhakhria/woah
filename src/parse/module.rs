@@ -3,7 +3,8 @@ use crate::{
     line::create_lines,
     parse::{
         Function,
-        Import
+        Import,
+        TypeKind
     },
     token::tokenise
 };
@@ -90,5 +91,15 @@ impl Module {
         /* Wraps self in an Rc */
 
         Rc::new(self)
+    }
+}
+
+
+impl Into<TypeKind> for Module {
+    fn into(self) -> TypeKind {
+        TypeKind::HigherOrder {
+            name: self.name.clone(),
+            args: vec![]
+        }
     }
 }
