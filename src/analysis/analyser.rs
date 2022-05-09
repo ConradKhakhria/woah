@@ -148,7 +148,7 @@ impl<'m> Analyser<'m> {
                 error.set_message("Cannot assign to array literal").into()
             }
 
-            ExprKind::AttrRes { parent, attr_name } => {
+            ExprKind::AttrRes { parent, .. } => {
                 self.assignable_expression_error(parent)
             }
 
@@ -333,6 +333,47 @@ impl<'m> Analyser<'m> {
     }
 
 
+    fn analyse_return(&mut self, value: &Option<Expr>, pos: (usize, usize)) -> Vec<Error> {
+        /* Analyses a return statement */
+
+        let current_function = self.current_function.unwrap();
+
+        match (&current_function.return_type, value) {
+            (Some(ret_type), Some(ret_value)) => {
+                let value_type = match get_expr_type(self, ret_value) {
+                    Ok(t) => t,
+                    Err(es) => return es
+                };
+
+                if &**ret_type != &*value_type {
+                    Error::new(ErrorKind::TypeError)
+                        .set_position(pos)
+                        .set_message(format!("Function '{}' returns type {}, received {}", current_function.name, ret_type, value_type))
+                        .into()
+                } else {
+                    vec![]
+                }
+            }
+
+            (None, None) => vec![],
+
+            (Some(ret_type), None) => {
+                Error::new(ErrorKind::TypeError)
+                    .set_position(pos)
+                    .set_message(format!("Function '{}' returns a value of type {}", current_function.name, ret_type))
+                    .into()
+            }
+
+            (None, Some(_)) => {
+                Error::new(ErrorKind::TypeError)
+                    .set_position(pos)
+                    .set_message(format!("Function '{}' does not return a value", current_function.name))
+                    .into()
+            }
+        }
+    }
+
+
     pub fn analyse_statement(&mut self, statement: &'m Statement) -> Vec<Error> {
         /* Statically analyses a statement in a function */
 
@@ -355,6 +396,18 @@ impl<'m> Analyser<'m> {
 
             StatementType::ForLoop { iterator_name, range, block } => {
                 self.analyse_for_loop(iterator_name, range, block)
+            }
+
+            StatementType::RawExpr { expr } => {
+                if let Err(es) = get_expr_type(self, expr) {
+                    es
+                } else {
+                    vec![]
+                }
+            }
+
+            StatementType::Return { value } => {
+                self.analyse_return(value, statement.first_position)
             }
 
             _ => unimplemented!()
