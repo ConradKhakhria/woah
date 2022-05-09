@@ -10,14 +10,15 @@ use crate::{
 use derive_getters::Getters;
 use std::{
     collections::HashMap,
-    path::Path
+    path::Path,
+    rc::Rc
 };
 
-#[derive(Debug, Getters)]
+#[derive(Debug)]
 pub struct Module {
-    name: String,
-    functions: HashMap<String, Function>,
-    imports: Vec<Import>
+    pub name: String,
+    pub functions: HashMap<String, Function>,
+    pub imports: Vec<Import>
 }
 
 
@@ -83,5 +84,11 @@ impl Module {
         } else {
             Err(errors.iter().map(|e| e.clone().set_line(&source_lines)).collect())
         }
+    }
+
+    pub fn rc(self) -> Rc<Self> {
+        /* Wraps self in an Rc */
+
+        Rc::new(self)
     }
 }
