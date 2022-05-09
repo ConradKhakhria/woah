@@ -182,6 +182,19 @@ impl<'m> Analyser<'m> {
     /* Statement analysis */
 
 
+    fn analyse_block(&mut self, block: &'m Vec<Statement>) -> Vec<Error> {
+        /* Analyses a block of statements */
+
+        let mut errors = vec![];
+
+        for statement in block.iter() {
+            errors.append(&mut self.analyse_statement(statement));
+        }
+
+        errors
+    }
+
+
     fn analyse_assignment(&mut self, assigned_to: &Expr, new_value: &Expr) -> Vec<Error> {
         /* Statically analyses the types of an assignment statement */
 
@@ -238,9 +251,7 @@ impl<'m> Analyser<'m> {
             Err(es) => es
         };
 
-        for statement in block.iter() {
-            errors.append(&mut self.analyse_statement(statement));
-        }
+        errors.append(&mut self.analyse_block(block));
 
         errors
     }
@@ -299,6 +310,29 @@ impl<'m> Analyser<'m> {
     }
 
 
+    fn analyse_for_loop(&mut self, iterator_name: &'m String, range: &Expr, block: &'m Vec<Statement>) -> Vec<Error> {
+        /* Analyses a for loop statement */
+
+        let iterator_type = match get_expr_type(self, range) {
+            Ok(tp) => {
+                match &*tp {
+                    TypeKind::List(inner) => Rc::clone(inner),
+                    t => return Error::new(ErrorKind::TypeError)
+                                            .set_position(range.first_position)
+                                            .set_message(format!("Cannot iterate over type {}", t))
+                                            .into()
+                }
+            }
+
+            Err(es) => return es
+        };
+
+        self.current_scope.add_value(iterator_name, iterator_type, true);
+
+        self.analyse_block(block)
+    }
+
+
     pub fn analyse_statement(&mut self, statement: &'m Statement) -> Vec<Error> {
         /* Statically analyses a statement in a function */
 
@@ -313,6 +347,14 @@ impl<'m> Analyser<'m> {
 
             StatementType::Declare { .. } => {
                 self.analyse_declaration(statement)
+            }
+
+            StatementType::Else { block } => {
+                self.analyse_block(block)
+            }
+
+            StatementType::ForLoop { iterator_name, range, block } => {
+                self.analyse_for_loop(iterator_name, range, block)
             }
 
             _ => unimplemented!()
