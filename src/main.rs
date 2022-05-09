@@ -26,6 +26,8 @@ fn main() {
     let mut static_analyser = analysis::Analyser::new();
     let errors = static_analyser.analyse_module(&root_module);
 
-    println!("{:#?}", errors);
+    for e in errors {
+        println!("{}", e);
+    }
 }
 
