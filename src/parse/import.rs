@@ -7,11 +7,11 @@ use crate::{
 
 use derive_getters::Getters;
 
-#[derive(Debug, Getters)]
+#[derive(Debug)]
 pub struct Import {
-    path: Vec<String>,
-    mod_name: String,
-    module: Module
+    pub path: Vec<String>,
+    pub mod_name: String,
+    pub module: Module
 }
 
 
