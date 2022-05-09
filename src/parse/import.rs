@@ -5,8 +5,6 @@ use crate::{
     token::Token
 };
 
-use derive_getters::Getters;
-
 #[derive(Debug)]
 pub struct Import {
     pub path: Vec<String>,
