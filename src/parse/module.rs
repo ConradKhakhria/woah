@@ -86,6 +86,7 @@ impl Module {
         }
     }
 
+    
     pub fn rc(self) -> Rc<Self> {
         /* Wraps self in an Rc */
 
