@@ -18,7 +18,8 @@ use std::{
 pub struct Module {
     pub name: String,
     pub functions: HashMap<String, Function>,
-    pub imports: Vec<Import>
+    pub imports: Vec<Import>,
+    pub source_lines: Vec<String>
 }
 
 
@@ -34,7 +35,7 @@ impl Module {
         };
 
         let source = std::fs::read_to_string(path).unwrap();
-        let source_lines: Vec<&str> = source.lines().collect();
+        let source_lines: Vec<String> = source.lines().map(|s| s.to_string()).collect();
         let tokens = match tokenise(&source, filename) {
             Ok(ts) => ts,
             Err(es) => {
@@ -79,7 +80,8 @@ impl Module {
             Ok(Module {
                 name: path.file_name().unwrap().to_str().unwrap().into(), // I love Rust
                 functions,
-                imports
+                imports,
+                source_lines
             })
         } else {
             Err(errors.iter().map(|e| e.clone().set_line(&source_lines)).collect())
