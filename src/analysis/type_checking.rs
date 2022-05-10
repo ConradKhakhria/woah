@@ -14,7 +14,7 @@ use std::{
 type TypeResult = Result<Rc<TypeKind>, Vec<Error>>;
 
 
-fn get_array_indexing_type(analyser: &Analyser, array: &Expr, index: &Expr) -> TypeResult {
+fn get_array_indexing_type(analyser: &mut Analyser, array: &Expr, index: &Expr) -> TypeResult {
     /* Checks the type of an <array>[<index>] expression */
 
     let mut errors = vec![];
@@ -55,7 +55,7 @@ fn get_array_indexing_type(analyser: &Analyser, array: &Expr, index: &Expr) -> T
 }
 
 
-fn get_array_literal_type(analyser: &Analyser, elems: &Vec<Expr>) -> TypeResult {
+fn get_array_literal_type(analyser: &mut Analyser, elems: &Vec<Expr>) -> TypeResult {
     /* Checks the type of an array literal */
     
     if elems.len() == 0 {
@@ -94,7 +94,7 @@ fn get_array_literal_type(analyser: &Analyser, elems: &Vec<Expr>) -> TypeResult 
 }
 
 
-fn get_attr_res_type(analyser: &Analyser, parent: &Expr, attr_name: &String) -> TypeResult {
+fn get_attr_res_type(analyser: &mut Analyser, parent: &Expr, attr_name: &String) -> TypeResult {
     /* Checks the type of an attribute resolution */
 
     match &*get_expr_type(analyser, parent)? {
@@ -120,7 +120,7 @@ fn get_attr_res_type(analyser: &Analyser, parent: &Expr, attr_name: &String) -> 
 }
 
 
-fn get_compound_type(analyser: &Analyser, operator: &String, left: &Expr, right: &Expr) -> TypeResult {
+fn get_compound_type(analyser: &mut Analyser, operator: &String, left: &Expr, right: &Expr) -> TypeResult {
     /* Checks the type of a compound expression */
 
     let mut errors = vec![];
@@ -159,7 +159,7 @@ fn get_compound_type(analyser: &Analyser, operator: &String, left: &Expr, right:
 }
 
 
-fn get_funcall_type(analyser: &Analyser, function: &Expr, args: &Vec<Expr>) -> TypeResult {
+fn get_funcall_type(analyser: &mut Analyser, function: &Expr, args: &Vec<Expr>) -> TypeResult {
     /* Returns the type of a function call expression */
 
     let function_type = get_expr_type(analyser, function)?;
@@ -202,7 +202,7 @@ fn get_funcall_type(analyser: &Analyser, function: &Expr, args: &Vec<Expr>) -> T
 }
 
 
-fn get_identifier_type(analyser: &Analyser, ident: &String) -> TypeResult {
+fn get_identifier_type(analyser: &mut Analyser, ident: &String) -> TypeResult {
     /* Checks the type of an identifier */
 
     if let Some(tp) = analyser.current_scope.get_value_type(ident) {
@@ -218,8 +218,10 @@ fn get_identifier_type(analyser: &Analyser, ident: &String) -> TypeResult {
 }
 
 
-pub fn get_expr_type(analyser: &Analyser, expr: &Expr) -> TypeResult {
+pub fn get_expr_type(analyser: &mut Analyser, expr: &Expr) -> TypeResult {
     /* Checks the type of an expression in a known context */
+
+    analyser.current_position = expr.first_position;
 
     match &expr.expr_kind {
         ExprKind::ArrayIndexing { array, index } => {
