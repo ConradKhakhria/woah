@@ -460,6 +460,8 @@ impl<'m> Analyser<'m> {
 
         self.modules.insert(&module.name, &module);
 
-        errors
+        errors.into_iter()
+              .map(|e| e.set_line(&module.source_lines))
+              .collect()
     }
 }
