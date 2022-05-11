@@ -292,10 +292,14 @@ impl<'m> Analyser<'m> {
                     }
 
                     None => {
-                        match self.allowable_value_type_error(&actual_expr_type, expr.first_position) {
+                        let errors = match self.allowable_value_type_error(&actual_expr_type, expr.first_position) {
                             Some(e) => e.into(),
                             None => vec![]
-                        }
+                        };
+
+                        self.current_scope.add_value(value_name, Rc::clone(&actual_expr_type), *constant);
+
+                        errors
                     }
                 }
             }
@@ -449,6 +453,8 @@ impl<'m> Analyser<'m> {
         }
 
         let mut errors = vec![];
+
+        self.current_module = Some(module);
 
         for import in module.imports.iter() {
             errors.append(&mut self.analyse_module(&import.module));
