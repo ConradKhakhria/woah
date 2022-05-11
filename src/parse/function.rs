@@ -101,7 +101,6 @@ impl Into<TypeKind> for Function {
     }
 }
 
-
 impl Into<TypeKind> for &Function {
     fn into(self) -> TypeKind {
         let mut args = vec![];
@@ -118,6 +117,22 @@ impl Into<TypeKind> for &Function {
                 None
             }
         }
+    }
+}
+
+impl Into<Rc<TypeKind>> for Function {
+    fn into(self) -> Rc<TypeKind> {
+        let tk: TypeKind = self.into();
+
+        tk.rc()
+    }
+}
+
+impl Into<Rc<TypeKind>> for &Function {
+    fn into(self) -> Rc<TypeKind> {
+        let tk: TypeKind = self.into();
+
+        tk.rc()
     }
 }
 
