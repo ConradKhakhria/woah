@@ -30,6 +30,10 @@ fn get_array_indexing_type(analyser: &mut Analyser, array: &Expr, index: &Expr) 
         errors.append(es);
     }
 
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+
     if let TypeKind::Int = &*index_type.unwrap() {} else {
         errors.push(Error::new(ErrorKind::TypeError)
                     .set_position(index.first_position)
