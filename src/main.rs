@@ -27,6 +27,6 @@ fn main() {
     let errors = static_analyser.analyse_module(&root_module);
 
     for e in errors {
-        println!("{}", e);
+        eprintln!("{}", e);
     }
 }
