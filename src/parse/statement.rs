@@ -71,8 +71,18 @@ pub struct Statement {
 impl<'s, 't> Statement {
     pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
         /* Creates a statement from a list of tokens */
+
+        let parse_options: [fn(&Line) -> Option<Result<Statement, Vec<Error>>>; 7] = [
+            parse_declare,
+            parse_conditional,
+            parse_else,
+            parse_for_loop,
+            parse_return,
+            parse_assignment,
+            parse_expr
+        ];
     
-        for option in PARSE_OPTIONS {
+        for option in parse_options {
             if let Some(res) = option(line) {
                 return res;
             }
@@ -91,7 +101,7 @@ impl<'s, 't> Statement {
 type ParseOption = Option<Result<Statement, Vec<Error>>>;
 
 
-fn parse_declare<'s, 't>(line: &Line) -> ParseOption {
+fn parse_declare(line: &Line) -> ParseOption {
     /* Parses a value declaration */
 
     let tokens = line.line_tokens;
@@ -179,7 +189,7 @@ fn parse_declare<'s, 't>(line: &Line) -> ParseOption {
 }
 
 
-fn parse_assignment<'s, 't>(line: &Line) -> ParseOption {
+fn parse_assignment(line: &Line) -> ParseOption {
     /* Parses a value assignment */
 
     let tokens = line.line_tokens;
@@ -230,7 +240,7 @@ fn parse_assignment<'s, 't>(line: &Line) -> ParseOption {
 }
 
 
-fn parse_conditional<'s, 't>(line: &Line) -> ParseOption {
+fn parse_conditional(line: &Line) -> ParseOption {
     /* Parses an if/elif/while stmt */
 
     let tokens = line.line_tokens;
@@ -284,7 +294,7 @@ fn parse_conditional<'s, 't>(line: &Line) -> ParseOption {
 }
 
 
-fn parse_else<'s, 't>(line: &Line) -> ParseOption {
+fn parse_else(line: &Line) -> ParseOption {
     /* Parses an else statement */
 
     let tokens = line.line_tokens;
@@ -317,7 +327,7 @@ fn parse_else<'s, 't>(line: &Line) -> ParseOption {
 }
 
 
-fn parse_for_loop<'s, 't>(line: &Line) -> ParseOption {
+fn parse_for_loop(line: &Line) -> ParseOption {
     /* Parses a for loop */
 
     let tokens = line.line_tokens;
@@ -470,7 +480,7 @@ fn parse_for_loop<'s, 't>(line: &Line) -> ParseOption {
 }
 
 
-fn parse_return<'s, 't>(line: &Line) -> ParseOption {
+fn parse_return(line: &Line) -> ParseOption {
     /* Parses a return value */
 
     let tokens = line.line_tokens;
@@ -524,20 +534,7 @@ fn parse_expr(line: &Line) -> ParseOption {
     })
 }
 
-
-// For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
-// as a function variable
-const PARSE_OPTIONS: [for<'s, 't> fn(&Line<'s, 't>) -> Option<Result<Statement, Vec<Error>>>; 7] = [
-    parse_declare,
-    parse_conditional,
-    parse_else,
-    parse_for_loop,
-    parse_return,
-    parse_assignment,
-    parse_expr
-];
-
-pub fn parse_statement_block<'s, 't>(lines: &[Line<'s, 't>]) -> Result<Vec<Statement>, Vec<Error>> {
+pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error>> {
     /* Parses a block of statements */
 
     let mut statements = vec![];
