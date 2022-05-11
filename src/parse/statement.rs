@@ -2,7 +2,7 @@ use crate::{
     error::{ Error, ErrorKind },
     token::Token,
     line::Line,
-    parse::{ Expr, TypeKind }
+    parse::{ Expr, ExprKind, TypeKind }
 };
 use std::rc::Rc;
 
@@ -35,7 +35,17 @@ pub enum StatementType {
         block: Vec<Statement>
     },
 
-    ForLoop {
+    // e.g. for i in 0 : 100
+    RangeForLoop {
+        iterator_name: String,
+        start_value: Expr,
+        end_value: Expr,
+        step_value: Expr, // defaults to 1
+        block: Vec<Statement>
+    },
+
+    // e.g. for x in xs
+    IteratorForLoop {
         iterator_name: String,
         range: Expr,
         block: Vec<Statement>
@@ -328,14 +338,14 @@ fn parse_for_loop<'s, 't>(line: &Line) -> ParseOption {
                         .into());
     }
 
-    /* Iterator and range */
+
+    /* Iterator name */
 
     if errors.is_empty() && tokens[2].to_string() != "in" {
         errors.push(format_err);
     }
 
     let iterator_name = tokens[1].to_string();
-    let mut range = Expr::from_tokens(&tokens[3..], tokens[3].position());
 
     if let Token::Identifier {..} = &tokens[1] {} else {
         errors.push(Error::new(ErrorKind::SyntaxError)
@@ -343,28 +353,113 @@ fn parse_for_loop<'s, 't>(line: &Line) -> ParseOption {
                         .set_message("Expected identifier"));
     }
 
-    /* For loop body */
+    /* Loop body */
 
-    let mut block = parse_statement_block(&line.line_derivs);
+    let mut block_result = parse_statement_block(&line.line_derivs);
 
-    /* Error recording */
-
-    if let Err(ref mut es) = range {
+    if let Err(ref mut es) = block_result {
         errors.append(es);
     }
+    
+    /* Range or iterator */
 
-    if let Err(ref mut es) = block {
-        errors.append(es);
+    let colon_delimited = Token::split_tokens(&tokens[..], |t| t.to_string() == ":");
+    let mut stmt_type = None;
+
+    match colon_delimited[..] {
+        [(mut start, end)] => {
+            start += 3;
+
+            match Expr::from_tokens(&tokens[start..end], tokens[3].position()) {
+                Ok(range) => {
+                    if let Ok(block) = block_result {
+                        stmt_type = Some(StatementType::IteratorForLoop {
+                            iterator_name,
+                            range,
+                            block
+                        });
+                    }
+                },
+
+                Err(ref mut es) => errors.append(es)
+            }
+        },
+
+        [(mut s1, s2), (e1, e2)] => {
+            s1 += 3;
+
+            let mut range_errors = vec![];
+            let mut start = Expr::from_tokens(&tokens[s1..s2], tokens[s1].position());
+            let mut end = Expr::from_tokens(&tokens[e1..e2], tokens[e1].position());
+
+            if let Err(ref mut es) = start {
+                range_errors.append(es);
+            }
+
+            if let Err(ref mut es) = end {
+                range_errors.append(es);
+            }
+
+            if range_errors.is_empty() {
+                if let Ok(block) = block_result {
+                    stmt_type = Some(StatementType::RangeForLoop {
+                        iterator_name,
+                        start_value: start.unwrap(),
+                        end_value: end.unwrap(),
+                        step_value: Expr {
+                            expr_kind: ExprKind::Integer("1".into()),
+                            expr_type: None,
+                            first_position: (1, 1),
+                            last_position: (1, 1)
+                        },
+                        block
+                    });
+                }
+            } else {
+                errors.append(&mut range_errors)
+            }
+        },
+
+        [(mut s1, s2), (e1, e2), (stp1, stp2)] => {
+            s1 += 3;
+
+            let mut range_errors = vec![];
+            let mut start = Expr::from_tokens(&tokens[s1..s2], tokens[s1].position());
+            let mut end = Expr::from_tokens(&tokens[e1..e2], tokens[e1].position());
+            let mut step = Expr::from_tokens(&tokens[stp1..stp2], tokens[stp1].position());
+
+            for res in vec![ &mut start, &mut end, &mut step ] {
+                if let Err(ref mut es) = res {
+                    range_errors.append(es);
+                }
+            }
+
+            if range_errors.is_empty() {
+                if let Ok(block) = block_result {
+                    stmt_type = Some(StatementType::RangeForLoop {
+                        iterator_name,
+                        start_value: start.unwrap(),
+                        end_value: end.unwrap(),
+                        step_value: step.unwrap(),
+                        block
+                    });
+                }
+            } else {
+                errors.append(&mut range_errors)
+            }
+        },
+
+        _ => {
+            errors.push(Error::new(ErrorKind::SyntaxError)
+                            .set_position(tokens[3].position())
+                            .set_message("Malformed syntax in for loop range"));
+        }
     }
 
     if errors.is_empty() {
         Some(Ok(
             Statement {
-                stmt_type: StatementType::ForLoop {
-                    iterator_name,
-                    range: range.unwrap(),
-                    block: block.unwrap()
-                },
+                stmt_type: stmt_type.unwrap(),
                 first_position: tokens[0].position(),
                 last_position: tokens[2].position()
             }
