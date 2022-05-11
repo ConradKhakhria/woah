@@ -209,6 +209,8 @@ fn get_identifier_type(analyser: &mut Analyser, ident: &String) -> TypeResult {
         Ok(tp)
     } else if let Some(m) = analyser.modules.get(ident) {
         Ok((*m).into())
+    } else if let Some(f) = analyser.current_module.unwrap().functions.get(ident) {
+        Ok(f.into())
     } else {
         Error::new(ErrorKind::NameError)
             .set_position(analyser.current_position)
