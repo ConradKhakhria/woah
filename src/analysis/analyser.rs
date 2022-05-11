@@ -314,15 +314,15 @@ impl<'m> Analyser<'m> {
     }
 
 
-    fn analyse_for_loop(&mut self, iterator_name: &'m String, range: &Expr, block: &'m Vec<Statement>) -> Vec<Error> {
-        /* Analyses a for loop statement */
+    fn analyse_iterator_for_loop(&mut self, iterator_name: &'m String, iterator: &Expr, block: &'m Vec<Statement>) -> Vec<Error> {
+        /* Analyses an iterator-based for loop statement */
 
-        let iterator_type = match get_expr_type(self, range) {
+        let iterator_type = match get_expr_type(self, iterator) {
             Ok(tp) => {
                 match &*tp {
                     TypeKind::List(inner) => Rc::clone(inner),
                     t => return Error::new(ErrorKind::TypeError)
-                                            .set_position(range.first_position)
+                                            .set_position(iterator.first_position)
                                             .set_message(format!("Cannot iterate over type {}", t))
                                             .into()
                 }
@@ -330,6 +330,69 @@ impl<'m> Analyser<'m> {
 
             Err(es) => return es
         };
+
+        self.current_scope.add_value(iterator_name, iterator_type, true);
+
+        self.analyse_block(block)
+    }
+
+
+    fn analyse_range_for_loop(&mut self, iterator_name: &'m String, rs: &[&Expr; 3], block: &'m Vec<Statement>) -> Vec<Error> {
+        /* Analyses a range-based for loop statement */
+
+        let mut errors = vec![];
+
+        let mut start_type = get_expr_type(self, rs[0]);
+        let mut end_type = get_expr_type(self, rs[1]);
+        let mut step_type = get_expr_type(self, rs[2]);
+
+        for res in vec![ &mut start_type, &mut end_type, &mut step_type ] {
+            if let Err(ref mut es) = res {
+                errors.append(es);
+            }
+        }
+
+        if !errors.is_empty() {
+            return errors;
+        }
+
+        let start_type = start_type.unwrap();
+
+        let iterator_type = match &*start_type {
+            TypeKind::Int | TypeKind::Float => Rc::clone(&start_type),
+            t => return Error::new(ErrorKind::TypeError)
+                                        .set_position(rs[0].first_position)
+                                        .set_message(format!("Cannot iterate over type {}", t))
+                                        .into()
+        };
+
+        match &*end_type.unwrap() {
+            TypeKind::Int | TypeKind::Float => {},
+            t => return Error::new(ErrorKind::TypeError)
+                            .set_position(rs[1].first_position)
+                            .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
+                            .into()
+        }
+
+        match &*step_type.unwrap() {
+            TypeKind::Int => {}
+
+            TypeKind::Float => {
+                if &*iterator_type == &TypeKind::Int {
+                    return Error::new(ErrorKind::TypeError)
+                                .set_position(rs[2].first_position)
+                                .set_message("Cannot increment an integer by a float type")
+                                .into();
+                }
+            }
+
+            t => {
+                return Error::new(ErrorKind::TypeError)
+                            .set_position(rs[1].first_position)
+                            .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
+                            .into();
+            }
+        }
 
         self.current_scope.add_value(iterator_name, iterator_type, true);
 
@@ -398,8 +461,12 @@ impl<'m> Analyser<'m> {
                 self.analyse_block(block)
             }
 
-            StatementType::ForLoop { iterator_name, range, block } => {
-                self.analyse_for_loop(iterator_name, range, block)
+            StatementType::IteratorForLoop { iterator_name, range, block } => {
+                self.analyse_iterator_for_loop(iterator_name, range, block)
+            }
+
+            StatementType::RangeForLoop { iterator_name, start_value, end_value, step_value, block } => {
+                self.analyse_range_for_loop(iterator_name, &[start_value, end_value, step_value], block)
             }
 
             StatementType::RawExpr { expr } => {
