@@ -59,6 +59,14 @@ impl Expr {
     pub fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Self, Vec<Error>> {
         /* Parses an expression from a list of tokens */
 
+        let parse_options = [
+            parse_atomic_expression,
+            parse_compound,
+            parse_funcall,
+            parse_indexing,
+            parse_attr_res
+        ];        
+
         if tokens.is_empty() {
             return Error::new(ErrorKind::SyntaxError)
                     .set_position(pos)
@@ -66,7 +74,7 @@ impl Expr {
                     .into();
         }
     
-        for option in PARSE_OPTIONS {
+        for option in parse_options {
             if let Some(expr) = option(tokens) {
                 return expr;
             }
@@ -358,14 +366,3 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
         }
     ))
 }
-
-
-// For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
-// as a function variable
-const PARSE_OPTIONS: [for<'s, 't> fn(&[Token]) -> Option<Result<Expr, Vec<Error>>>; 5] = [
-    parse_atomic_expression,
-    parse_compound,
-    parse_funcall,
-    parse_indexing,
-    parse_attr_res
-];
