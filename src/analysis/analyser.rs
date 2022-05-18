@@ -233,25 +233,30 @@ impl<'m> Analyser<'m> {
     }
 
 
-    fn analyse_conditional(&mut self, condition: &Expr, block: &'m Vec<Statement>) -> Vec<Error> {
+    fn analyse_conditional(&mut self, cases: &'m Vec<(Expr, Vec<Statement>)>, default: &'m Option<Vec<Statement>>) -> Vec<Error> {
         /* Statically analyses a conditional statement */
 
-        let mut errors = match get_expr_type(self, condition) {
-            Ok(tp) => {
-                if &*tp != &TypeKind::Bool {
-                    Error::new(ErrorKind::TypeError)
-                        .set_position(condition.first_position)
-                        .set_message("Expected boolean expression in conditional statement")
-                        .into()
-                } else {
-                    vec![]
+        let mut errors = vec![];
+
+        for (cond, block) in cases.iter() {
+            match get_expr_type(self, cond) {
+                Ok(tp) => {
+                    if &*tp != &TypeKind::Bool {
+                        errors.push(Error::new(ErrorKind::TypeError)
+                                        .set_position(cond.first_position)
+                                        .set_message("Expected boolean expression in conditional statement"));
+                    }
                 }
+    
+                Err(ref mut es) => errors.append(es)
             }
 
-            Err(es) => es
-        };
+            errors.append(&mut self.analyse_block(block));
+        }
 
-        errors.append(&mut self.analyse_block(block));
+        if let Some(block) = default {
+            errors.append(&mut self.analyse_block(block));
+        }
 
         errors
     }
@@ -449,16 +454,12 @@ impl<'m> Analyser<'m> {
                 self.analyse_assignment(assigned_to, new_value)
             }
 
-            StatementType::Conditional { condition, block, .. } => {
-                self.analyse_conditional(condition, block)
+            StatementType::Conditional { cases, default } => {
+                self.analyse_conditional(cases, default)
             }
 
             StatementType::Declare { .. } => {
                 self.analyse_declaration(statement)
-            }
-
-            StatementType::Else { block } => {
-                self.analyse_block(block)
             }
 
             StatementType::IteratorForLoop { iterator_name, range, block } => {
