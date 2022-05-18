@@ -4,6 +4,7 @@ def square(x: int) int
 
 def main()
     let xs = [1, 2, 3, 4, 5, 6]
+    var rs = xs
 
-    for x in xs
-        Env.println(square(x))
+    for i in 0 : 6
+        rs[i] = square(i)
