@@ -7,22 +7,6 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum ExprKind {
-    Compound {
-        operator: String,
-        left: Box<Expr>,
-        right: Box<Expr>
-    },
-
-    Unary {
-        operator: String,
-        operand: Box<Expr>
-    },
-
-    FunctionCall {
-        function: Box<Expr>,
-        args: Vec<Expr>
-    },
-
     ArrayIndexing {
         array: Box<Expr>,
         index: Box<Expr>
@@ -37,13 +21,29 @@ pub enum ExprKind {
         attr_name: String
     },
 
-    String(String),
+    Compound {
+        operator: String,
+        left: Box<Expr>,
+        right: Box<Expr>
+    },
 
-    Integer(String),
+    FunctionCall {
+        function: Box<Expr>,
+        args: Vec<Expr>
+    },
 
     Float(String),
 
+    Integer(String),
+
     Identifier(String),
+
+    String(String),
+
+    Unary {
+        operator: String,
+        operand: Box<Expr>
+    },
 }
 
 #[derive(Debug)]
@@ -84,6 +84,61 @@ impl Expr {
             .set_position(tokens[0].position())
             .set_message("Unrecognised syntax in expression")
             .into()
+    }
+}
+
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.expr_kind {
+            ExprKind::ArrayIndexing { array, index } => {
+                write!(f, "{}[ {} ]", array, index)
+            },
+
+            ExprKind::ArrayLiteral { elems } => {
+                let mut string = String::from("[");
+
+                for e in elems.iter() {
+                    string = format!("{}{}, ", string, e);
+                }
+
+                let mut strlen = string.len();
+
+                write!(f, "{}]", &string[..strlen - 2])
+            },
+
+            ExprKind::AttrRes { parent, attr_name } => {
+                write!(f, "{}.{}", parent, attr_name)
+            },
+
+            ExprKind::Compound { operator, left, right } => {
+                write!(f, "{} {} {}", left, operator, right)
+            },
+
+            ExprKind::Float(s) => write!(f, "{}", s),
+
+            ExprKind::FunctionCall { function, args } => {
+                let mut string = format!("{}(", function);
+
+                for arg in args.iter() {
+                    string = format!("{}{}, ", string, arg);
+                }
+
+                let strlen = string.len();
+
+                write!(f, "{})", &string[..strlen - 2])
+            },
+
+            ExprKind::Identifier(ident) => write!(f, "{}", ident),
+
+            ExprKind::Integer(s) => write!(f, "{}", s),
+
+            ExprKind::String(s) => write!(f, "\"{}\"", s),
+
+            ExprKind::Unary { operator, operand } => {
+                write!(f, "{}{}", operator, operand)
+            }
+        }
     }
 }
 
