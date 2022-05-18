@@ -95,7 +95,7 @@ impl<'s, 't> Statement {
 
     /* Display */
 
-    fn display(&self, indent_level: usize) -> String {
+    pub fn display(&self, indent_level: usize) -> String {
         /* Displays a statement with a given indent level */
 
         let indent: String = vec![' '; indent_level].into_iter().collect();

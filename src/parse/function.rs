@@ -136,6 +136,29 @@ impl Into<Rc<TypeKind>> for &Function {
     }
 }
 
+impl std::fmt::Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut string = format!("FUNCTION {}(", self.name);
+
+        for arg in self.args.iter() {
+            string = format!("{}{} : {}, ", string, arg.arg_name, arg.arg_type);
+        }
+
+        if self.args.len() == 0 {
+            string += ")\n";
+        } else {
+            let strlen = string.len();
+            string = format!("{})\n", &string[..strlen - 2]);
+        }
+
+        for stmt in self.body.iter() {
+            string = format!("{}{}", string, stmt.display(4));
+        }
+
+        write!(f, "{}", string)
+    }
+}
+
 
 /* Function arguments */
 
