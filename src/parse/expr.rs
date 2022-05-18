@@ -102,7 +102,7 @@ impl std::fmt::Display for Expr {
                     string = format!("{}{}, ", string, e);
                 }
 
-                let mut strlen = string.len();
+                let strlen = string.len();
 
                 write!(f, "{}]", &string[..strlen - 2])
             },
@@ -126,7 +126,11 @@ impl std::fmt::Display for Expr {
 
                 let strlen = string.len();
 
-                write!(f, "{})", &string[..strlen - 2])
+                if args.len() == 0 {
+                    write!(f, "{}()", function)
+                } else {
+                    write!(f, "{})", &string[..strlen - 2])
+                }
             },
 
             ExprKind::Identifier(ident) => write!(f, "{}", ident),
