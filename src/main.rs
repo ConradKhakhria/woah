@@ -23,6 +23,10 @@ fn main() {
         }
     };
 
+    for function in root_module.functions.values() {
+        println!("{}", function);
+    }
+
     let mut static_analyser = analysis::Analyser::new();
     let errors = static_analyser.analyse_module(&root_module);
 
