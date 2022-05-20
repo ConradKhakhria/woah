@@ -89,6 +89,8 @@ pub struct Analyser<'m> {
 
 
 impl<'m> Analyser<'m> {
+/* Utils */
+
     pub fn new() -> Self {
         /* Creates a new static analyser */
 
@@ -104,7 +106,25 @@ impl<'m> Analyser<'m> {
     }
 
 
-    /* Type analysis */
+    pub fn get_analysis_result(&self) -> Result<(), &Vec<Message>> {
+        /* Returns either nothing or a list of errors */
+
+        if self.errors.len() == 0 {
+            Ok(())
+        } else {
+            Err(&self.errors)
+        }
+    }
+
+
+    pub fn get_warnings(&self) -> &Vec<Message> {
+        /* Returns all warnings generated during static analysis */
+
+        &self.warnings
+    }
+
+
+/* Type analysis */
 
 
     fn allowable_value_type_error(&mut self, type_kind: &Rc<TypeKind>, pos: (usize, usize)) -> Option<Message> {
@@ -507,7 +527,11 @@ impl<'m> Analyser<'m> {
         if !self.contains_return(&function.body) && function.return_type.is_some() {
             self.errors.push(Message::new(MsgKind::TypeError)
                                 .set_position(function.body.last().unwrap().first_position)
-                                .set_message(format!("Function '{}' is not guaranteed to return", function.name)));
+                                .set_message(format!(
+                                    "Function '{}' does not return type {} in all cases",
+                                    function.name,
+                                    function.return_type.as_ref().unwrap()
+                                )));
         }
     }
 
@@ -588,12 +612,9 @@ impl<'m> Analyser<'m> {
         for e in self.errors.iter_mut() {
             *e = e.clone().set_line(&module.source_lines);
         }
-    }
 
-
-    pub fn get_errors(&self) -> &Vec<Message> {
-        /* Gets all errors recorded in the Analyser */
-
-        &self.errors
+        for w in self.warnings.iter_mut() {
+            *w = w.clone().set_line(&module.source_lines);
+        }
     }
 }
