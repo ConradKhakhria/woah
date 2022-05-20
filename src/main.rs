@@ -1,4 +1,5 @@
 mod analysis;
+mod compile;
 mod message;
 mod line;
 mod parse;
@@ -12,6 +13,8 @@ fn main() {
                     .next()
                     .expect("No file supplied");
 
+    /* Parsing */
+
     let root_module = match parse::Module::from_filepath(Path::new(&filename)) {
         Ok(m) => m,
         Err(es) => {
@@ -23,12 +26,9 @@ fn main() {
         }
     };
 
-    for function in root_module.functions.values() {
-        println!("{}", function);
-    }
+    /* Static analysis */
 
     let mut static_analyser = analysis::Analyser::new();
-
     static_analyser.analyse_module(&root_module);
 
     for w in static_analyser.get_warnings().iter() {
@@ -43,5 +43,15 @@ fn main() {
         return;
     }
 
-    println!("Done!");
+    /* Compilation */
+
+    let compiler = compile::Compiler::new();
+    let result = compiler.compile_single_file(&root_module);
+
+    compiler.print_warnings()
+            .print_errors();
+
+    if result.is_ok() {
+        println!("Done!");
+    }
 }
