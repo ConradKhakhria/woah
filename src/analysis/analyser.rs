@@ -18,6 +18,7 @@ use std::{
 };
 
 
+#[derive(Debug)]
 pub struct Scope<'m> {
     frames: Vec<Vec<&'m String>>,
     values: HashMap<&'m String, (Rc<TypeKind>, bool)>
@@ -81,7 +82,8 @@ pub struct Analyser<'m> {
     pub current_module: Option<&'m Module>,
     pub current_function: Option<&'m Function>,
     pub current_scope: Scope<'m>,
-    pub current_position: (usize, usize)
+    pub current_position: (usize, usize),
+    pub errors: Vec<Error>
 }
 
 
@@ -94,7 +96,8 @@ impl<'m> Analyser<'m> {
             current_module: None,
             current_function: None,
             current_scope: Scope::new(),
-            current_position: (1, 1)
+            current_position: (1, 1),
+            errors: vec![]
         }
     }
 
@@ -182,87 +185,76 @@ impl<'m> Analyser<'m> {
     /* Statement analysis */
 
 
-    fn analyse_block(&mut self, block: &'m Vec<Statement>) -> Vec<Error> {
+    fn analyse_block(&mut self, block: &'m Vec<Statement>) {
         /* Analyses a block of statements */
 
-        let mut errors = vec![];
-
         for statement in block.iter() {
-            errors.append(&mut self.analyse_statement(statement));
+            self.analyse_statement(statement);
         }
-
-        errors
     }
 
 
-    fn analyse_assignment(&mut self, assigned_to: &Expr, new_value: &Expr) -> Vec<Error> {
+    fn analyse_assignment(&mut self, assigned_to: &Expr, new_value: &Expr) {
         /* Statically analyses the types of an assignment statement */
 
         let mut assigned_to_type = get_expr_type(self, assigned_to);
         let mut new_value_type = get_expr_type(self, new_value);
-        let mut errors = vec![];
 
         for result in vec![ &mut assigned_to_type, &mut new_value_type ] {
             if let Err(ref mut es) = result {
-                errors.append(es);
+                self.errors.append(es);
             }
         }
 
         match (assigned_to_type, new_value_type) {
             (Ok(att), Ok(nvt)) => {
                 if att != nvt {
-                    errors.push(Error::new(ErrorKind::TypeError)
-                                    .set_position(assigned_to.first_position)
-                                    .set_message(format!("Expected type '{}', received '{}'", att, nvt))
-                                    .into());
+                    self.errors.push(Error::new(ErrorKind::TypeError)
+                                        .set_position(assigned_to.first_position)
+                                        .set_message(format!("Expected type '{}', received '{}'", att, nvt))
+                                        .into());
                 }
 
                 if let Some(e) = self.assignable_expression_error(assigned_to) {
-                    errors.push(e);
+                    self.errors.push(e);
                 }
 
                 if let Some(e) = self.allowable_value_type_error(&nvt, new_value.first_position) {
-                    errors.push(e);
+                    self.errors.push(e);
                 }
             }
 
             _ => {}
         }
-
-        errors
     }
 
 
-    fn analyse_conditional(&mut self, cases: &'m Vec<(Expr, Vec<Statement>)>, default: &'m Option<Vec<Statement>>) -> Vec<Error> {
+    fn analyse_conditional(&mut self, cases: &'m Vec<(Expr, Vec<Statement>)>, default: &'m Option<Vec<Statement>>) {
         /* Statically analyses a conditional statement */
-
-        let mut errors = vec![];
 
         for (cond, block) in cases.iter() {
             match get_expr_type(self, cond) {
                 Ok(tp) => {
                     if &*tp != &TypeKind::Bool {
-                        errors.push(Error::new(ErrorKind::TypeError)
-                                        .set_position(cond.first_position)
-                                        .set_message("Expected boolean expression in conditional statement"));
+                        self.errors.push(Error::new(ErrorKind::TypeError)
+                                            .set_position(cond.first_position)
+                                            .set_message("Expected boolean expression in conditional statement"));
                     }
                 }
     
-                Err(ref mut es) => errors.append(es)
+                Err(ref mut es) => self.errors.append(es)
             }
 
-            errors.append(&mut self.analyse_block(block));
+            self.analyse_block(block);
         }
 
         if let Some(block) = default {
-            errors.append(&mut self.analyse_block(block));
+            self.analyse_block(block);
         }
-
-        errors
     }
 
 
-    fn analyse_declaration(&mut self, statement: &'m Statement) -> Vec<Error> {
+    fn analyse_declaration(&mut self, statement: &'m Statement) {
         /* Analyses a declaration */
 
         let (value_name, value_type, value, constant) = match &statement.stmt_type {
@@ -277,72 +269,71 @@ impl<'m> Analyser<'m> {
             Some(expr) => {
                 let actual_expr_type = match get_expr_type(self, &expr) {
                     Ok(tp) => tp,
-                    Err(es) => return es
+                    Err(ref mut es) => {
+                        self.errors.append(es);
+                        return;
+                    }
                 };
 
                 match value_type {
                     Some(tp) => {
-                        let errors = if &*actual_expr_type == &**tp {
-                            vec![]
-                        } else {
-                            Error::new(ErrorKind::TypeError)
-                                .set_position(expr.first_position)
-                                .set_message(format!("Expected type {}, received {}", tp, actual_expr_type))
-                                .into()
-                        };
+                        if &*actual_expr_type != &**tp {
+                            self.errors.push(Error::new(ErrorKind::TypeError)
+                                                .set_position(expr.first_position)
+                                                .set_message(format!("Expected type {}, received {}", tp, actual_expr_type)));
+                        }
 
                         self.current_scope.add_value(value_name, Rc::clone(tp), *constant);
-                     
-                        errors
                     }
 
                     None => {
-                        let errors = match self.allowable_value_type_error(&actual_expr_type, expr.first_position) {
-                            Some(e) => e.into(),
-                            None => vec![]
+                        match self.allowable_value_type_error(&actual_expr_type, expr.first_position) {
+                            Some(e) => self.errors.push(e),
+                            None => {}
                         };
 
                         self.current_scope.add_value(value_name, Rc::clone(&actual_expr_type), *constant);
-
-                        errors
                     }
                 }
             }
 
             None => {
-                Error::new(ErrorKind::UnimplementedError)
-                    .set_position(statement.first_position)
-                    .set_message("I have not implemented delayed value assignment yet")
-                    .into()
+                self.errors.push(Error::new(ErrorKind::UnimplementedError)
+                                    .set_position(statement.first_position)
+                                    .set_message("I have not implemented delayed value assignment yet"));
             }
         }
     }
 
 
-    fn analyse_iterator_for_loop(&mut self, iterator_name: &'m String, iterator: &Expr, block: &'m Vec<Statement>) -> Vec<Error> {
+    fn analyse_iterator_for_loop(&mut self, iterator_name: &'m String, iterator: &Expr, block: &'m Vec<Statement>) {
         /* Analyses an iterator-based for loop statement */
 
         let iterator_type = match get_expr_type(self, iterator) {
             Ok(tp) => {
                 match &*tp {
                     TypeKind::List(inner) => Rc::clone(inner),
-                    t => return Error::new(ErrorKind::TypeError)
+                    t => {
+                        self.errors.push(Error::new(ErrorKind::TypeError)
                                             .set_position(iterator.first_position)
-                                            .set_message(format!("Cannot iterate over type {}", t))
-                                            .into()
+                                            .set_message(format!("Cannot iterate over type {}", t)));
+                        return;
+                    }
                 }
             }
 
-            Err(es) => return es
+            Err(ref mut es) => {
+                self.errors.append(es);
+                return;
+            }
         };
 
         self.current_scope.add_value(iterator_name, iterator_type, true);
-
         self.analyse_block(block)
     }
 
 
-    fn analyse_range_for_loop(&mut self, iterator_name: &'m String, rs: &[&Expr; 3], block: &'m Vec<Statement>) -> Vec<Error> {
+    fn analyse_range_for_loop(&mut self, iterator_name: &'m String, rs: &[&Expr; 3], block: &'m Vec<Statement>) {
         /* Analyses a range-based for loop statement */
 
         let mut errors = vec![];
@@ -358,25 +349,31 @@ impl<'m> Analyser<'m> {
         }
 
         if !errors.is_empty() {
-            return errors;
+            self.errors.append(&mut errors);
+            return;
         }
 
         let start_type = start_type.unwrap();
 
         let iterator_type = match &*start_type {
             TypeKind::Int | TypeKind::Float => Rc::clone(&start_type),
-            t => return Error::new(ErrorKind::TypeError)
-                                        .set_position(rs[0].first_position)
-                                        .set_message(format!("Cannot iterate over type {}", t))
-                                        .into()
+            t => {
+                self.errors.push(Error::new(ErrorKind::TypeError)
+                                    .set_position(rs[0].first_position)
+                                    .set_message(format!("Cannot iterate over type {}", t)));
+                return;
+            }
         };
 
         match &*end_type.unwrap() {
             TypeKind::Int | TypeKind::Float => {},
-            t => return Error::new(ErrorKind::TypeError)
-                            .set_position(rs[1].first_position)
-                            .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
-                            .into()
+            t => {
+                self.errors.push(Error::new(ErrorKind::TypeError)
+                                    .set_position(rs[1].first_position)
+                                    .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
+                                    .into());
+                return;
+            }
         }
 
         match &*step_type.unwrap() {
@@ -384,18 +381,18 @@ impl<'m> Analyser<'m> {
 
             TypeKind::Float => {
                 if &*iterator_type == &TypeKind::Int {
-                    return Error::new(ErrorKind::TypeError)
+                    self.errors.push(Error::new(ErrorKind::TypeError)
                                 .set_position(rs[2].first_position)
-                                .set_message("Cannot increment an integer by a float type")
-                                .into();
+                                .set_message("Cannot increment an integer by a float type"));
+                    return;
                 }
             }
 
             t => {
-                return Error::new(ErrorKind::TypeError)
+                self.errors.push(Error::new(ErrorKind::TypeError)
                             .set_position(rs[1].first_position)
-                            .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
-                            .into();
+                            .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t)));
+                return;
             }
         }
 
@@ -405,7 +402,7 @@ impl<'m> Analyser<'m> {
     }
 
 
-    fn analyse_return(&mut self, value: &Option<Expr>, pos: (usize, usize)) -> Vec<Error> {
+    fn analyse_return(&mut self, value: &Option<Expr>, pos: (usize, usize)) {
         /* Analyses a return statement */
 
         let current_function = self.current_function.unwrap();
@@ -414,72 +411,73 @@ impl<'m> Analyser<'m> {
             (Some(ret_type), Some(ret_value)) => {
                 let value_type = match get_expr_type(self, ret_value) {
                     Ok(t) => t,
-                    Err(es) => return es
+                    Err(ref mut es) => {
+                        self.errors.append(es);
+                        return;
+                    }
                 };
 
                 if &**ret_type != &*value_type {
-                    Error::new(ErrorKind::TypeError)
-                        .set_position(pos)
-                        .set_message(format!("Function '{}' returns type {}, received {}", current_function.name, ret_type, value_type))
-                        .into()
-                } else {
-                    vec![]
+                    self.errors.push(Error::new(ErrorKind::TypeError)
+                                        .set_position(pos)
+                                        .set_message(format!(
+                                            "Function '{}' returns type {}, received {}",
+                                            current_function.name,
+                                            ret_type,
+                                            value_type
+                                        )));
                 }
             }
 
-            (None, None) => vec![],
-
             (Some(ret_type), None) => {
-                Error::new(ErrorKind::TypeError)
-                    .set_position(pos)
-                    .set_message(format!("Function '{}' returns a value of type {}", current_function.name, ret_type))
-                    .into()
+                self.errors.push(Error::new(ErrorKind::TypeError)
+                                    .set_position(pos)
+                                    .set_message(format!("Function '{}' returns a value of type {}", current_function.name, ret_type)))
             }
 
             (None, Some(_)) => {
-                Error::new(ErrorKind::TypeError)
-                    .set_position(pos)
-                    .set_message(format!("Function '{}' does not return a value", current_function.name))
-                    .into()
-            }
+                self.errors.push(Error::new(ErrorKind::TypeError)
+                                    .set_position(pos)
+                                    .set_message(format!("Function '{}' does not return a value", current_function.name)))
+            },
+
+            _ => {}
         }
     }
 
 
-    pub fn analyse_statement(&mut self, statement: &'m Statement) -> Vec<Error> {
+    pub fn analyse_statement(&mut self, statement: &'m Statement) {
         /* Statically analyses a statement in a function */
 
         match &statement.stmt_type {
             StatementType::Assign { assigned_to, new_value } => {
-                self.analyse_assignment(assigned_to, new_value)
+                self.analyse_assignment(assigned_to, new_value);
             }
 
             StatementType::Conditional { cases, default } => {
-                self.analyse_conditional(cases, default)
+                self.analyse_conditional(cases, default);
             }
 
             StatementType::Declare { .. } => {
-                self.analyse_declaration(statement)
+                self.analyse_declaration(statement);
             }
 
             StatementType::IteratorForLoop { iterator_name, range, block } => {
-                self.analyse_iterator_for_loop(iterator_name, range, block)
+                self.analyse_iterator_for_loop(iterator_name, range, block);
             }
 
             StatementType::RangeForLoop { iterator_name, start_value, end_value, step_value, block } => {
-                self.analyse_range_for_loop(iterator_name, &[start_value, end_value, step_value], block)
+                self.analyse_range_for_loop(iterator_name, &[start_value, end_value, step_value], block);
             }
 
             StatementType::RawExpr { expr } => {
-                if let Err(es) = get_expr_type(self, expr) {
-                    es
-                } else {
-                    vec![]
+                if let Err(ref mut es) = get_expr_type(self, expr) {
+                    self.errors.append(es);
                 }
             }
 
             StatementType::Return { value } => {
-                self.analyse_return(value, statement.first_position)
+                self.analyse_return(value, statement.first_position);
             }
 
             _ => unimplemented!()
@@ -490,7 +488,7 @@ impl<'m> Analyser<'m> {
     /* Function analysis */
 
 
-    pub fn analyse_function(&mut self, function: &'m Function) -> Vec<Error> {
+    pub fn analyse_function(&mut self, function: &'m Function) {
         /* Statically analyses a function */
 
         self.current_function = Some(function);
@@ -500,42 +498,43 @@ impl<'m> Analyser<'m> {
             self.current_scope.add_value(&arg.arg_name, Rc::clone(&arg.arg_type), true);
         }
 
-        let mut errors = vec![];
-
         for statement in function.body.iter() {
-            errors.append(&mut self.analyse_statement(statement));
+            self.analyse_statement(statement);
         }
-
-        errors
     }
 
 
     /* Module analysis */
 
 
-    pub fn analyse_module(&mut self, module: &'m Module) -> Vec<Error> {
+    pub fn analyse_module(&mut self, module: &'m Module) {
         /* Analyses all functions in a module, recursing on imports */
 
         if self.modules.contains_key(&module.name) {
-            return vec![];
+            return;
         }
-
-        let mut errors = vec![];
 
         self.current_module = Some(module);
 
         for import in module.imports.iter() {
-            errors.append(&mut self.analyse_module(&import.module));
+            self.analyse_module(&import.module);
         }
 
         for function in module.functions.values() {
-            errors.append(&mut self.analyse_function(function));
+            self.analyse_function(function);
         }
 
         self.modules.insert(&module.name, &module);
 
-        errors.into_iter()
-              .map(|e| e.set_line(&module.source_lines))
-              .collect()
+        for e in self.errors.iter_mut() {
+            *e = e.clone().set_line(&module.source_lines);
+        }
+    }
+
+
+    pub fn get_errors(&self) -> &Vec<Error> {
+        /* Gets all errors recorded in the Analyser */
+
+        &self.errors
     }
 }

@@ -28,9 +28,10 @@ fn main() {
     }
 
     let mut static_analyser = analysis::Analyser::new();
-    let errors = static_analyser.analyse_module(&root_module);
 
-    for e in errors {
+    static_analyser.analyse_module(&root_module);
+
+    for e in static_analyser.get_errors().iter() {
         eprintln!("{}", e);
     }
 }
