@@ -11,11 +11,15 @@ pub struct Message {
 
 #[derive(Clone, Copy, Debug)]
 pub enum MsgKind {
+    /* Errors */
     ModuleError,
     NameError,
     SyntaxError,
     TypeError,
-    UnimplementedError
+    UnimplementedError,
+
+    /* Warnings */
+    DeadCodeWarning,
 }
 
 impl std::fmt::Display for Message {
@@ -76,7 +80,9 @@ impl std::fmt::Display for MsgKind {
             MsgKind::NameError          => "Name Error",
             MsgKind::SyntaxError        => "Syntax Error",
             MsgKind::TypeError          => "Type Error",
-            MsgKind::UnimplementedError => "Unimplemented Error"
+            MsgKind::UnimplementedError => "Unimplemented Error",
+
+            MsgKind::DeadCodeWarning    => "Dead Code warning",
         })
     }
 }
