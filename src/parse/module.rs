@@ -34,6 +34,22 @@ impl Module {
                                 .into()
         };
 
+        /* Get module name */
+
+        let module_name = {
+            let filename_len = filename.len();
+
+            if filename.ends_with(".woah") {
+                filename[..filename_len - 5].to_string()
+            } else {
+                return Message::new(MsgKind::ModuleError)
+                            .set_message(format!("File {} doesn't end with '.woah'", filename))
+                            .into();
+            }
+        };
+
+        /* Get tokens and lines */
+
         let source = std::fs::read_to_string(path).unwrap();
         let source_lines: Vec<String> = source.lines().map(|s| s.to_string()).collect();
         let tokens = match tokenise(&source, filename) {
@@ -78,7 +94,7 @@ impl Module {
 
         if errors.is_empty() {
             Ok(Module {
-                name: path.file_name().unwrap().to_str().unwrap().into(), // I love Rust
+                name: module_name,
                 functions,
                 imports,
                 source_lines
