@@ -1,5 +1,5 @@
 mod analysis;
-mod error;
+mod message;
 mod line;
 mod parse;
 mod token;

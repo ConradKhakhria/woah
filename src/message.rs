@@ -1,16 +1,16 @@
 use std::string::ToString;
 
 #[derive(Clone, Debug)]
-pub struct Error {
+pub struct Message {
     message: Option<String>,
     position: Option<(usize, usize)>,
-    error_kind: ErrorKind,
+    msg_kind: MsgKind,
     filename: Option<String>,
     formatted_code_line: Option<String>
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum ErrorKind {
+pub enum MsgKind {
     ModuleError,
     NameError,
     SyntaxError,
@@ -18,9 +18,9 @@ pub enum ErrorKind {
     UnimplementedError
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("woah:: {} ", self.error_kind);
+        let mut string = format!("woah:: {} ", self.msg_kind);
 
         string = format!("{}{}", string,
             match (&self.filename, &self.position) {
@@ -46,22 +46,22 @@ impl std::fmt::Display for Error {
 
 /* Conversions */
 
-impl Into<Vec<Error>> for Error {
-    fn into(self) -> Vec<Error> {
+impl Into<Vec<Message>> for Message {
+    fn into(self) -> Vec<Message> {
         vec![ self ]
     }
 }
 
 
-impl<T> Into<Result<T, Error>> for Error {
-    fn into(self) -> Result<T, Error> {
+impl<T> Into<Result<T, Message>> for Message {
+    fn into(self) -> Result<T, Message> {
         Err(self)
     }
 }
 
 
-impl<T> Into<Result<T, Vec<Error>>> for Error {
-    fn into(self) -> Result<T, Vec<Error>> {
+impl<T> Into<Result<T, Vec<Message>>> for Message {
+    fn into(self) -> Result<T, Vec<Message>> {
         Err(vec![ self ])
     }
 }
@@ -69,34 +69,34 @@ impl<T> Into<Result<T, Vec<Error>>> for Error {
 
 /* Display */
 
-impl std::fmt::Display for ErrorKind {
+impl std::fmt::Display for MsgKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
-            ErrorKind::ModuleError        => "Module Error",
-            ErrorKind::NameError          => "Name Error",
-            ErrorKind::SyntaxError        => "Syntax Error",
-            ErrorKind::TypeError          => "Type Error",
-            ErrorKind::UnimplementedError => "Unimplemented Error"
+            MsgKind::ModuleError        => "Module Error",
+            MsgKind::NameError          => "Name Error",
+            MsgKind::SyntaxError        => "Syntax Error",
+            MsgKind::TypeError          => "Type Error",
+            MsgKind::UnimplementedError => "Unimplemented Error"
         })
     }
 }
 
 
-impl Error {
-    pub fn new(error_kind: ErrorKind) -> Error {
-        /* Returns an initialised error */
+impl Message {
+    pub fn new(msg_kind: MsgKind) -> Message {
+        /* Returns an initialised message */
 
-        Error {
+        Message {
             message: None,
             position: None,
-            error_kind,
+            msg_kind,
             filename: None,
             formatted_code_line: None
         }
     }
 
 
-    pub fn res<T>(self) -> Result<T, Error> {
+    pub fn res<T>(self) -> Result<T, Message> {
         /* Moves self into a Result */
         Err(self)
     }
@@ -116,7 +116,7 @@ impl Error {
 
 
     pub fn set_line<T: ToString>(mut self, lines: &Vec<T>) -> Self {
-        /* Sets the line the error occurs on, with formatting */
+        /* Sets the line the message occurs on, with formatting */
 
         if let None = self.formatted_code_line {
             if let Some((line_number, col_number)) = self.position {
@@ -144,7 +144,7 @@ impl Error {
 
 
     pub fn set_message<T: std::string::ToString>(mut self, msg: T) -> Self {
-        /* Sets the error's message */
+        /* Sets the message string */
 
         if let None = self.message {
             self.message = Some(msg.to_string());
@@ -155,7 +155,7 @@ impl Error {
 
 
     pub fn set_position(mut self, pos: (usize, usize)) -> Self {
-        /* Sets the error's position */
+        /* Sets the message's position */
 
         if let None = self.position {
             self.position = Some(pos);

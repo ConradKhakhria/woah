@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     token::Token,
     line::Line,
     parse::{ Expr, ExprKind, TypeKind }
@@ -67,10 +67,10 @@ impl<'s, 't> Statement {
 
     /* Instantiation */
 
-    pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
+    pub fn from_line(line: &Line) -> Result<Self, Vec<Message>> {
         /* Creates a statement from a list of tokens */
 
-        let parse_options: [fn(&Line) -> Option<Result<Statement, Vec<Error>>>; 7] = [
+        let parse_options: [fn(&Line) -> Option<Result<Statement, Vec<Message>>>; 7] = [
             report_extraneous_elif_else,
             parse_declare,
             parse_for_loop,
@@ -86,7 +86,7 @@ impl<'s, 't> Statement {
             }
         }
     
-        Error::new(ErrorKind::SyntaxError)
+        Message::new(MsgKind::SyntaxError)
             .set_position(line.line_tokens[0].position())
             .set_message("Unrecognised syntax in statement")
             .into()
@@ -201,7 +201,7 @@ impl std::fmt::Display for Statement {
 
 /* Parsing */
 
-type ParseOption = Option<Result<Statement, Vec<Error>>>;
+type ParseOption = Option<Result<Statement, Vec<Message>>>;
 
 
 fn parse_declare(line: &Line) -> ParseOption {
@@ -215,14 +215,14 @@ fn parse_declare(line: &Line) -> ParseOption {
     };
 
     if line.line_derivs.len() > 1 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(line.line_derivs[0].line_tokens[0].position())
                         .set_message("Declarations cannot have a derivative block")
                         .into());
     }
 
     if tokens.len() < 4 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                 .set_position(tokens[0].position())
                 .set_message("Declaration must have either a type annotation or a value")
                 .into());
@@ -245,7 +245,7 @@ fn parse_declare(line: &Line) -> ParseOption {
                 },
     
                 Some(_) => {
-                    return Some(Error::new(ErrorKind::SyntaxError)
+                    return Some(Message::new(MsgKind::SyntaxError)
                                     .set_position(tokens[i].position())
                                     .set_message("Found 2 assignments in declaration")
                                     .into())
@@ -298,7 +298,7 @@ fn parse_assignment(line: &Line) -> ParseOption {
     let tokens = line.line_tokens;
 
     if line.line_derivs.len() != 0 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(line.line_derivs[0].line_tokens[0].position())
                         .set_message("Assignments cannot have a derivative block")
                         .into());
@@ -349,7 +349,7 @@ fn report_extraneous_elif_else(line: &Line) -> ParseOption {
     let first_token_string = line.line_tokens[0].to_string();
 
     if first_token_string == "elif" || first_token_string == "else" {
-        let err_res = Error::new(ErrorKind::SyntaxError)
+        let err_res = Message::new(MsgKind::SyntaxError)
                         .set_position(line.line_tokens[0].position())
                         .set_message(format!("'{}' statement has no preceding 'if' statement", first_token_string))
                         .into();
@@ -361,11 +361,11 @@ fn report_extraneous_elif_else(line: &Line) -> ParseOption {
 }
 
 
-fn parse_if_elif(line: &Line) -> Result<(Expr, Vec<Statement>), Vec<Error>> {
+fn parse_if_elif(line: &Line) -> Result<(Expr, Vec<Statement>), Vec<Message>> {
     /* Parses an individual if or elif statemnet */
 
     if line.line_tokens.len() < 2 {
-        return Error::new(ErrorKind::SyntaxError)
+        return Message::new(MsgKind::SyntaxError)
                     .set_position(line.line_tokens[0].position())
                     .set_message("Expected conditional expression in expression")
                     .into();
@@ -397,7 +397,7 @@ fn parse_for_loop(line: &Line) -> ParseOption {
     /* Parses a for loop */
 
     let tokens = line.line_tokens;
-    let format_err = Error::new(ErrorKind::SyntaxError)
+    let format_err = Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Expected syntax 'for <iterator> in <range>");
 
@@ -408,7 +408,7 @@ fn parse_for_loop(line: &Line) -> ParseOption {
     } else if tokens.len() < 4 {
         errors.push(format_err.clone());
     } else if line.line_derivs.len() == 0 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(line.line_tokens.last().unwrap().position())
                         .set_message("For loops must have a block")
                         .into());
@@ -424,7 +424,7 @@ fn parse_for_loop(line: &Line) -> ParseOption {
     let iterator_name = tokens[1].to_string();
 
     if let Token::Identifier {..} = &tokens[1] {} else {
-        errors.push(Error::new(ErrorKind::SyntaxError)
+        errors.push(Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[1].position())
                         .set_message("Expected identifier"));
     }
@@ -526,7 +526,7 @@ fn parse_for_loop(line: &Line) -> ParseOption {
         },
 
         _ => {
-            errors.push(Error::new(ErrorKind::SyntaxError)
+            errors.push(Message::new(MsgKind::SyntaxError)
                             .set_position(tokens[3].position())
                             .set_message("Malformed syntax in for loop range"));
         }
@@ -554,7 +554,7 @@ fn parse_return(line: &Line) -> ParseOption {
     if tokens[0].to_string() != "return" {
         return None;
     } else if line.line_derivs.len() != 0 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("A return statement cannot have a block")
                         .into());
@@ -584,7 +584,7 @@ fn parse_expr(line: &Line) -> ParseOption {
     let tokens = line.line_tokens;
 
     if line.line_derivs.len() > 0 {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("A raw expr statement cannot have a block")
                         .into());
@@ -605,14 +605,14 @@ fn parse_while_loop(line: &Line) -> ParseOption {
     /* Parses a while loop */
 
     let tokens = line.line_tokens;
-    let mut errors: Vec<Error> = Vec::new();
+    let mut errors: Vec<Message> = Vec::new();
 
     if tokens[0].to_string().as_str() != "while" {
         return None;
     }
 
     if line.line_derivs.is_empty() {
-        return Some(Error::new(ErrorKind::SyntaxError)
+        return Some(Message::new(MsgKind::SyntaxError)
                         .set_position(line.line_tokens.last().unwrap().position())
                         .set_message("Conditional statements must have a block")
                         .into());
@@ -644,7 +644,7 @@ fn parse_while_loop(line: &Line) -> ParseOption {
 }
 
 
-pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error>> {
+pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Message>> {
     /* Parses a block of statements */
 
     let mut statements = vec![];
@@ -679,7 +679,7 @@ pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error
 
             if lines[index].line_tokens[0].to_string() == "else" {
                 if lines[index].line_tokens.len() > 1 {
-                    errors.push(Error::new(ErrorKind::SyntaxError)
+                    errors.push(Message::new(MsgKind::SyntaxError)
                                     .set_position(lines[index].line_tokens[0].position())
                                     .set_message("Else statement cannot have an expression"));
                 }

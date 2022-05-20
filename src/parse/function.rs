@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     line::Line,
     parse::{ parse_statement_block, Statement, TypeKind },
     token::Token
@@ -16,13 +16,13 @@ pub struct Function {
 
 
 impl Function {
-    pub fn from_line(line: &Line) -> Result<Function, Vec<Error>> {
+    pub fn from_line(line: &Line) -> Result<Function, Vec<Message>> {
         /* Parses a function from a nested line */
 
         let tokens = line.line_tokens;
         let mut errors = vec![];
 
-        let format_error = Error::new(ErrorKind::SyntaxError)
+        let format_error = Message::new(MsgKind::SyntaxError)
                                     .set_position(tokens[0].position())
                                     .set_message("Invalid function definition syntax");
 
@@ -163,7 +163,7 @@ impl std::fmt::Display for Function {
 /* Function arguments */
 
 
-fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument>, Vec<Error>> {
+fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument>, Vec<Message>> {
    /* Attempts to parse a list of function arguments */
 
     let mut args = vec![];
@@ -174,14 +174,14 @@ fn parse_arguments<'s, 't>(args_block: &'t Token<'s>) -> Result<Vec<Argument>, V
             if *open_delim == "(" {
                 contents
             } else {
-                return Error::new(ErrorKind::SyntaxError)
+                return Message::new(MsgKind::SyntaxError)
                             .set_position(args_block.position())
                             .set_message("Expected a '('-delimited list of arguments")
                             .into();
             }
         },
 
-        _ => return Error::new(ErrorKind::SyntaxError)
+        _ => return Message::new(MsgKind::SyntaxError)
                         .set_position(args_block.position())
                         .set_message("Expected a list of arguments")
                         .into()
@@ -211,20 +211,20 @@ pub struct Argument {
 
 
 impl Argument {
-    fn from_tokens(tokens: &[Token]) -> Result<Argument, Vec<Error>> {
+    fn from_tokens(tokens: &[Token]) -> Result<Argument, Vec<Message>> {
         /* Parses an argument */
 
         let arg_name = tokens[0].to_string();
 
         if let Token::Identifier {..} = &tokens[0] { } else {
-            return Error::new(ErrorKind::SyntaxError)
+            return Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Expected an argument name")
                         .into();
         }
 
         if tokens.len() < 3 || tokens[1].to_string() != ":" {
-            return Error::new(ErrorKind::SyntaxError)
+            return Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Expected syntax <argument name> : <argument type>")
                         .into();

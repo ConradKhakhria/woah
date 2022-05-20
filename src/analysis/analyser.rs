@@ -1,6 +1,6 @@
 use crate::{
     analysis::get_expr_type,
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     parse::{
         Expr,
         ExprKind,
@@ -34,7 +34,7 @@ impl<'m> Scope<'m> {
     }
 
 
-    pub fn add_value(&mut self, name: &'m String, v_type: Rc<TypeKind>, constant: bool) -> Option<Error> {
+    pub fn add_value(&mut self, name: &'m String, v_type: Rc<TypeKind>, constant: bool) -> Option<Message> {
         /* Adds a value to the scope */
 
         if self.frames.is_empty() {
@@ -42,7 +42,7 @@ impl<'m> Scope<'m> {
         }
 
         if self.values.contains_key(name) {
-            Error::new(ErrorKind::NameError)
+            Message::new(MsgKind::NameError)
                 .set_message(format!("Cannot redefine value '{}'", name))
                 .into()
         } else {
@@ -83,7 +83,7 @@ pub struct Analyser<'m> {
     pub current_function: Option<&'m Function>,
     pub current_scope: Scope<'m>,
     pub current_position: (usize, usize),
-    pub errors: Vec<Error>
+    pub errors: Vec<Message>
 }
 
 
@@ -105,7 +105,7 @@ impl<'m> Analyser<'m> {
     /* Type analysis */
 
 
-    fn allowable_value_type_error(&mut self, type_kind: &Rc<TypeKind>, pos: (usize, usize)) -> Option<Error> {
+    fn allowable_value_type_error(&mut self, type_kind: &Rc<TypeKind>, pos: (usize, usize)) -> Option<Message> {
        /* Determines whether values can have our type
         *
         * returns: an error if not
@@ -113,14 +113,14 @@ impl<'m> Analyser<'m> {
 
         match &**type_kind {
             TypeKind::EmptyList => {
-                Error::new(ErrorKind::TypeError)
+                Message::new(MsgKind::TypeError)
                     .set_position(pos)
                     .set_message("The type of this array cannot be determined")
                     .into()
             }
 
             TypeKind::Function {..} | TypeKind::Module(_) => {
-                Error::new(ErrorKind::TypeError)
+                Message::new(MsgKind::TypeError)
                     .set_position(pos)
                     .set_message(format!("Cannot declare variables of type '{}'", type_kind))
                     .into()
@@ -134,13 +134,13 @@ impl<'m> Analyser<'m> {
     /* Expression analysis */
 
 
-    fn assignable_expression_error(&mut self, expression: &Expr) -> Option<Error> {
+    fn assignable_expression_error(&mut self, expression: &Expr) -> Option<Message> {
        /* Determines whether an expression can be assigned to
         *
         * returns: if not assignable, an error saying so and where
         */
 
-        let error = Error::new(ErrorKind::TypeError).set_position(expression.first_position);
+        let error = Message::new(MsgKind::TypeError).set_position(expression.first_position);
 
         match &expression.expr_kind {
             ExprKind::ArrayIndexing { array, .. } => {
@@ -209,7 +209,7 @@ impl<'m> Analyser<'m> {
         match (assigned_to_type, new_value_type) {
             (Ok(att), Ok(nvt)) => {
                 if att != nvt {
-                    self.errors.push(Error::new(ErrorKind::TypeError)
+                    self.errors.push(Message::new(MsgKind::TypeError)
                                         .set_position(assigned_to.first_position)
                                         .set_message(format!("Expected type '{}', received '{}'", att, nvt))
                                         .into());
@@ -236,7 +236,7 @@ impl<'m> Analyser<'m> {
             match get_expr_type(self, cond) {
                 Ok(tp) => {
                     if &*tp != &TypeKind::Bool {
-                        self.errors.push(Error::new(ErrorKind::TypeError)
+                        self.errors.push(Message::new(MsgKind::TypeError)
                                             .set_position(cond.first_position)
                                             .set_message("Expected boolean expression in conditional statement"));
                     }
@@ -278,7 +278,7 @@ impl<'m> Analyser<'m> {
                 match value_type {
                     Some(tp) => {
                         if &*actual_expr_type != &**tp {
-                            self.errors.push(Error::new(ErrorKind::TypeError)
+                            self.errors.push(Message::new(MsgKind::TypeError)
                                                 .set_position(expr.first_position)
                                                 .set_message(format!("Expected type {}, received {}", tp, actual_expr_type)));
                         }
@@ -298,7 +298,7 @@ impl<'m> Analyser<'m> {
             }
 
             None => {
-                self.errors.push(Error::new(ErrorKind::UnimplementedError)
+                self.errors.push(Message::new(MsgKind::UnimplementedError)
                                     .set_position(statement.first_position)
                                     .set_message("I have not implemented delayed value assignment yet"));
             }
@@ -314,7 +314,7 @@ impl<'m> Analyser<'m> {
                 match &*tp {
                     TypeKind::List(inner) => Rc::clone(inner),
                     t => {
-                        self.errors.push(Error::new(ErrorKind::TypeError)
+                        self.errors.push(Message::new(MsgKind::TypeError)
                                             .set_position(iterator.first_position)
                                             .set_message(format!("Cannot iterate over type {}", t)));
                         return;
@@ -358,7 +358,7 @@ impl<'m> Analyser<'m> {
         let iterator_type = match &*start_type {
             TypeKind::Int | TypeKind::Float => Rc::clone(&start_type),
             t => {
-                self.errors.push(Error::new(ErrorKind::TypeError)
+                self.errors.push(Message::new(MsgKind::TypeError)
                                     .set_position(rs[0].first_position)
                                     .set_message(format!("Cannot iterate over type {}", t)));
                 return;
@@ -368,7 +368,7 @@ impl<'m> Analyser<'m> {
         match &*end_type.unwrap() {
             TypeKind::Int | TypeKind::Float => {},
             t => {
-                self.errors.push(Error::new(ErrorKind::TypeError)
+                self.errors.push(Message::new(MsgKind::TypeError)
                                     .set_position(rs[1].first_position)
                                     .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t))
                                     .into());
@@ -381,7 +381,7 @@ impl<'m> Analyser<'m> {
 
             TypeKind::Float => {
                 if &*iterator_type == &TypeKind::Int {
-                    self.errors.push(Error::new(ErrorKind::TypeError)
+                    self.errors.push(Message::new(MsgKind::TypeError)
                                 .set_position(rs[2].first_position)
                                 .set_message("Cannot increment an integer by a float type"));
                     return;
@@ -389,7 +389,7 @@ impl<'m> Analyser<'m> {
             }
 
             t => {
-                self.errors.push(Error::new(ErrorKind::TypeError)
+                self.errors.push(Message::new(MsgKind::TypeError)
                             .set_position(rs[1].first_position)
                             .set_message(format!("Cannot compare value of type {} to this value of type {}", iterator_type, t)));
                 return;
@@ -418,7 +418,7 @@ impl<'m> Analyser<'m> {
                 };
 
                 if &**ret_type != &*value_type {
-                    self.errors.push(Error::new(ErrorKind::TypeError)
+                    self.errors.push(Message::new(MsgKind::TypeError)
                                         .set_position(pos)
                                         .set_message(format!(
                                             "Function '{}' returns type {}, received {}",
@@ -430,13 +430,13 @@ impl<'m> Analyser<'m> {
             }
 
             (Some(ret_type), None) => {
-                self.errors.push(Error::new(ErrorKind::TypeError)
+                self.errors.push(Message::new(MsgKind::TypeError)
                                     .set_position(pos)
                                     .set_message(format!("Function '{}' returns a value of type {}", current_function.name, ret_type)))
             }
 
             (None, Some(_)) => {
-                self.errors.push(Error::new(ErrorKind::TypeError)
+                self.errors.push(Message::new(MsgKind::TypeError)
                                     .set_position(pos)
                                     .set_message(format!("Function '{}' does not return a value", current_function.name)))
             },
@@ -532,7 +532,7 @@ impl<'m> Analyser<'m> {
     }
 
 
-    pub fn get_errors(&self) -> &Vec<Error> {
+    pub fn get_errors(&self) -> &Vec<Message> {
         /* Gets all errors recorded in the Analyser */
 
         &self.errors

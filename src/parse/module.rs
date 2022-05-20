@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     line::create_lines,
     parse::{
         Function,
@@ -24,12 +24,12 @@ pub struct Module {
 
 
 impl Module {
-    pub fn from_filepath(path: &Path) -> Result<Self, Vec<Error>> {
+    pub fn from_filepath(path: &Path) -> Result<Self, Vec<Message>> {
         /* Reads and parses a module from a file */
 
         let filename = match path.to_str() {
             Some(s) => s,
-            None => return Error::new(ErrorKind::SyntaxError)
+            None => return Message::new(MsgKind::SyntaxError)
                                 .set_message(format!("Filename '{:?}' is not valid unicode", path.as_os_str()))
                                 .into()
         };
@@ -69,7 +69,7 @@ impl Module {
                 }
 
                 _ => {
-                    errors.push(Error::new(ErrorKind::SyntaxError)
+                    errors.push(Message::new(MsgKind::SyntaxError)
                                     .set_position(line.line_tokens[0].position())
                                     .set_message("unrecognised syntax"));
                 }

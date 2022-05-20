@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     parse::TypeKind,
     token::Token
 };
@@ -56,7 +56,7 @@ pub struct Expr {
 
 
 impl Expr {
-    pub fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Self, Vec<Error>> {
+    pub fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Self, Vec<Message>> {
         /* Parses an expression from a list of tokens */
 
         let parse_options = [
@@ -68,7 +68,7 @@ impl Expr {
         ];        
 
         if tokens.is_empty() {
-            return Error::new(ErrorKind::SyntaxError)
+            return Message::new(MsgKind::SyntaxError)
                     .set_position(pos)
                     .set_message("Received empty expression")
                     .into();
@@ -80,7 +80,7 @@ impl Expr {
             }
         }
     
-        Error::new(ErrorKind::SyntaxError)
+        Message::new(MsgKind::SyntaxError)
             .set_position(tokens[0].position())
             .set_message("Unrecognised syntax in expression")
             .into()
@@ -149,7 +149,7 @@ impl std::fmt::Display for Expr {
 
 /* Parsing */
 
-type ParseOption = Option<Result<Expr, Vec<Error>>>;
+type ParseOption = Option<Result<Expr, Vec<Message>>>;
 
 
 fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
@@ -174,7 +174,7 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
 
         Token::Symbol { string, .. } => {
             return Some(
-                Error::new(ErrorKind::SyntaxError)
+                Message::new(MsgKind::SyntaxError)
                     .set_position(tokens[0].position())
                     .set_message(format!("Expected expression, received '{}'", string))
                     .into()
@@ -196,7 +196,7 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
                 })
             } else {
                 Some(
-                    Error::new(ErrorKind::SyntaxError)
+                    Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Expected expression, received code block")
                         .into()
@@ -218,7 +218,7 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
 }
 
 
-fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec<Error>> {
+fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec<Message>> {
     /* Parses an array literal */
 
     let mut values = Vec::new();
@@ -251,7 +251,7 @@ fn parse_attr_res(tokens: &[Token]) -> ParseOption {
     let attr_name = tokens.last().unwrap().to_string();
     
     if let Token::Identifier {..} = tokens.last().unwrap() {} else {
-        errors.push(Error::new(ErrorKind::SyntaxError)
+        errors.push(Message::new(MsgKind::SyntaxError)
                         .set_position(tokens.last().unwrap().position())
                         .set_message("Expected attribute name"));
     }
@@ -333,7 +333,7 @@ fn parse_compound(tokens: &[Token]) -> ParseOption {
                 last_position: tokens.last().unwrap().position()
             })
         } else {
-            Error::new(ErrorKind::SyntaxError)
+            Message::new(MsgKind::SyntaxError)
                 .set_position(tokens[0].position())
                 .set_message("Unrecognised syntax in expression")
                 .into()

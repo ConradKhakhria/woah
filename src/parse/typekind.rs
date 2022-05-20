@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     token::Token
 };
 use std::rc::Rc;
@@ -39,18 +39,18 @@ pub enum TypeKind {
 impl TypeKind {
     /* Initialisation */
 
-    fn parse_head_block_type(tokens: &[Token]) -> Result<Self, Vec<Error>> {
+    fn parse_head_block_type(tokens: &[Token]) -> Result<Self, Vec<Message>> {
         /* Parses a type which begins with a bracketed block */
 
         match tokens {
             [Token::Block { open_delim: "[", contents, .. }, rest @ .. ] => {
                 if rest.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
+                    Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("Unrecognised type '[]'")
                         .into()
                 } else if !contents.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
+                    Message::new(MsgKind::SyntaxError)
                         .set_position(contents[0].position())
                         .set_message("List types must have the syntax []<type>")
                         .into()
@@ -61,7 +61,7 @@ impl TypeKind {
 
             [Token::Block { open_delim: "(", contents, .. }] => {
                 if contents.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
+                    Message::new(MsgKind::SyntaxError)
                             .set_position(tokens[0].position())
                             .set_message("unrecognised type '()'")
                             .into()   
@@ -109,7 +109,7 @@ impl TypeKind {
                 }
             }
         
-            _ => Error::new(ErrorKind::SyntaxError)
+            _ => Message::new(MsgKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("unrecognised syntax in type annotation")
                         .into()
@@ -117,7 +117,7 @@ impl TypeKind {
     }
 
 
-    fn parse_head_identifier_type(tokens: &[Token]) -> Result<Self, Vec<Error>> {
+    fn parse_head_identifier_type(tokens: &[Token]) -> Result<Self, Vec<Message>> {
         /* Parses a type whose first token is an identifier */
 
         let head_name = tokens[0].to_string();
@@ -134,7 +134,7 @@ impl TypeKind {
             return if tokens.len() == 1 {
                 builtin_result
             } else {
-                 Error::new(ErrorKind::TypeError)
+                 Message::new(MsgKind::TypeError)
                         .set_position(tokens[0].position())
                         .set_message(format!("Type '{}' cannot have parameters", tokens[0].to_string()))
                         .into()
@@ -162,7 +162,7 @@ impl TypeKind {
     }
     
 
-    fn parse_head_symbol_type(symbol: &str, tokens: &[Token]) -> Result<Self, Vec<Error>> {
+    fn parse_head_symbol_type(symbol: &str, tokens: &[Token]) -> Result<Self, Vec<Message>> {
         /* Parses a type whose first token is a symbol */
 
         if symbol == "@" {
@@ -170,7 +170,7 @@ impl TypeKind {
                 TypeKind::from_tokens(&tokens[1..])?.rc()
             ))
         } else {
-            Error::new(ErrorKind::SyntaxError)
+            Message::new(MsgKind::SyntaxError)
                 .set_position(tokens[0].position())
                 .set_message("Unrecognised syntax in type annotation")
                 .into()
@@ -178,7 +178,7 @@ impl TypeKind {
     }
 
 
-    pub fn from_tokens(tokens: &[Token]) -> Result<Self, Vec<Error>> {
+    pub fn from_tokens(tokens: &[Token]) -> Result<Self, Vec<Message>> {
         /* Parses a type */
 
         match tokens {
@@ -198,7 +198,7 @@ impl TypeKind {
                 Self::parse_head_symbol_type(string, tokens)
             }
 
-            _ => Error::new(ErrorKind::SyntaxError)
+            _ => Message::new(MsgKind::SyntaxError)
                     .set_position(tokens[0].position())
                     .set_message("Unrecognised syntax in type annotation")
                     .into()

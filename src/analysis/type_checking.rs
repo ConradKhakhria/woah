@@ -1,6 +1,6 @@
 use crate::{
     analysis::Analyser,
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     parse::{
         Expr,
         ExprKind,
@@ -11,7 +11,7 @@ use std::{
     rc::Rc
 };
 
-type TypeResult = Result<Rc<TypeKind>, Vec<Error>>;
+type TypeResult = Result<Rc<TypeKind>, Vec<Message>>;
 
 
 fn get_array_indexing_type(analyser: &mut Analyser, array: &Expr, index: &Expr) -> TypeResult {
@@ -35,7 +35,7 @@ fn get_array_indexing_type(analyser: &mut Analyser, array: &Expr, index: &Expr) 
     }
 
     if let TypeKind::Int = &*index_type.unwrap() {} else {
-        errors.push(Error::new(ErrorKind::TypeError)
+        errors.push(Message::new(MsgKind::TypeError)
                     .set_position(index.first_position)
                     .set_message("Arrays can only ben indexed by integers"));
     }
@@ -43,7 +43,7 @@ fn get_array_indexing_type(analyser: &mut Analyser, array: &Expr, index: &Expr) 
     let deriv = match &*array_type.unwrap() {
         TypeKind::List(deriv) => Rc::clone(deriv),
         _ => {
-            errors.push(Error::new(ErrorKind::TypeError)
+            errors.push(Message::new(MsgKind::TypeError)
                             .set_position(array.last_position)
                             .set_message("Cannot index a non-array type"));
 
@@ -84,7 +84,7 @@ fn get_array_literal_type(analyser: &mut Analyser, elems: &Vec<Expr>) -> TypeRes
 
     for (i, tp) in elem_types[1..].iter().enumerate() {
         if tp != first_type {
-            errors.push(Error::new(ErrorKind::TypeError)
+            errors.push(Message::new(MsgKind::TypeError)
                                 .set_position(elems[i].first_position)
                                 .set_message(format!("Expected type {}, received {}", first_type, tp)));
         }
@@ -112,7 +112,7 @@ fn get_attr_res_type(analyser: &mut Analyser, parent: &Expr, attr_name: &String)
 
                 Ok(func_type.rc())
             } else {
-                Error::new(ErrorKind::NameError)
+                Message::new(MsgKind::NameError)
                     .set_position(parent.last_position)
                     .set_message(format!("Module '{}' has no attribute '{}'", mod_name, attr_name))
                     .into()
@@ -149,7 +149,7 @@ fn get_compound_type(analyser: &mut Analyser, operator: &String, left: &Expr, ri
         (TypeKind::Float, TypeKind::Int)   => TypeKind::Float.rc(),
         (TypeKind::Int, TypeKind::Float)   => TypeKind::Float.rc(),
         (TypeKind::Float, TypeKind::Float) => TypeKind::Float.rc(),
-        _ => return Error::new(ErrorKind::TypeError)
+        _ => return Message::new(MsgKind::TypeError)
                     .set_position(left.first_position)
                     .set_message("Expected numeric type")
                     .into()
@@ -171,7 +171,7 @@ fn get_funcall_type(analyser: &mut Analyser, function: &Expr, args: &Vec<Expr>) 
 
     let (function_arg_types, function_return_type) = match &*function_type {
         TypeKind::Function { args, return_type } => (args, return_type),
-        _ => return Error::new(ErrorKind::TypeError)
+        _ => return Message::new(MsgKind::TypeError)
                         .set_position(function.last_position)
                         .set_message(format!("Cannot call non-function value"))
                         .into()
@@ -181,7 +181,7 @@ fn get_funcall_type(analyser: &mut Analyser, function: &Expr, args: &Vec<Expr>) 
         match get_expr_type(analyser, arg) {
             Ok(tp) => {
                 if &*tp != &*function_arg_types[i] {
-                    errors.push(Error::new(ErrorKind::TypeError)
+                    errors.push(Message::new(MsgKind::TypeError)
                                         .set_position(arg.first_position)
                                         .set_message(format!("Expected type {}, received {}", function_arg_types[i], tp)));
                 }
@@ -195,7 +195,7 @@ fn get_funcall_type(analyser: &mut Analyser, function: &Expr, args: &Vec<Expr>) 
         if let Some(tp) = function_return_type {
             Ok(Rc::clone(tp))
         } else {
-            Error::new(ErrorKind::TypeError)
+            Message::new(MsgKind::TypeError)
                 .set_position(function.first_position)
                 .set_message("Function does not return a value")
                 .into()
@@ -216,7 +216,7 @@ fn get_identifier_type(analyser: &mut Analyser, ident: &String) -> TypeResult {
     } else if let Some(f) = analyser.current_module.unwrap().functions.get(ident) {
         Ok(f.into())
     } else {
-        Error::new(ErrorKind::NameError)
+        Message::new(MsgKind::NameError)
             .set_position(analyser.current_position)
             .set_message(format!("No value or module named '{}' in scope", ident))
             .into()

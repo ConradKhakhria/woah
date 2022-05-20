@@ -1,5 +1,5 @@
 use crate::{
-    error::{ Error, ErrorKind },
+    message::{ Message, MsgKind },
     line::Line,
     parse::Module,
     token::Token
@@ -14,7 +14,7 @@ pub struct Import {
 
 
 impl Import {
-    pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
+    pub fn from_line(line: &Line) -> Result<Self, Vec<Message>> {
         /* Parses an import from a line */
 
         let path_tokens = &line.line_tokens[1..];
@@ -27,7 +27,7 @@ impl Import {
                 path.push(string);
                 index += 1;
             } else {
-                return Error::new(ErrorKind::SyntaxError)
+                return Message::new(MsgKind::SyntaxError)
                             .set_position(path_tokens[index].position())
                             .set_message("Expected identifier in module path")
                             .into();
@@ -36,7 +36,7 @@ impl Import {
             if index == path_tokens.len() {
                 break;
             } else if path_tokens[index].to_string() != "." {
-                return Error::new(ErrorKind::SyntaxError)
+                return Message::new(MsgKind::SyntaxError)
                             .set_position(path_tokens[index].position())
                             .set_message("Expected '.' delimiter in module path")
                             .into();
@@ -46,17 +46,17 @@ impl Import {
         }
 
         if path.len() == 0 {
-            Error::new(ErrorKind::SyntaxError)
+            Message::new(MsgKind::SyntaxError)
                 .set_position(path_tokens[0].position())
                 .set_message("received empty import")
                 .into()
         } else if line.line_derivs.len() != 0 {
-            Error::new(ErrorKind::SyntaxError)
+            Message::new(MsgKind::SyntaxError)
                 .set_position(path_tokens[0].position())
                 .set_message("An import cannot have a block")
                 .into()
         } else {
-            Error::new(ErrorKind::UnimplementedError)
+            Message::new(MsgKind::UnimplementedError)
                 .set_position(line.line_tokens[0].position())
                 .set_message("I haven't implemented imports yet")
                 .into()

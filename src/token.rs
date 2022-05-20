@@ -1,4 +1,4 @@
-use crate::error::{ Error, ErrorKind };
+use crate::message::{ Message, MsgKind };
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -140,7 +140,7 @@ struct Lexer<'f> {
 }
 
 impl<'f> Lexer<'f> {
-    fn build_nested<'s>(&mut self, source: &'s str, token_strings: impl Iterator<Item = &'s str>) -> Result<Vec<Token<'s>>, Vec<Error>> {
+    fn build_nested<'s>(&mut self, source: &'s str, token_strings: impl Iterator<Item = &'s str>) -> Result<Vec<Token<'s>>, Vec<Message>> {
         /* Builds nested tokens */
         let mut token_stack = vec![
             Token::Block {
@@ -152,14 +152,14 @@ impl<'f> Lexer<'f> {
 
         for token_string in token_strings {
             self.match_token_string(token_string, &mut token_stack)
-                .map_err(|err| vec![ err ])?;
+                .map_err(|msg| vec![ msg ])?;
         }
 
         Ok(token_stack)
     }
 
 
-    fn create_list_token<'s>(&mut self, open_delim: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Error> {
+    fn create_list_token<'s>(&mut self, open_delim: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Message> {
         /* Creates a Token::List and adds it to the token stack */
 
         token_stack.push(Token::Block {
@@ -192,7 +192,7 @@ impl<'f> Lexer<'f> {
     }
 
 
-    fn end_list_token<'s>(&mut self, close_delim: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Error> {
+    fn end_list_token<'s>(&mut self, close_delim: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Message> {
         /* Pushes the top of the token_stack onto the one below */
 
         let corresponding_open_delim = match close_delim {
@@ -214,7 +214,7 @@ impl<'f> Lexer<'f> {
                 format!("Mismatches braces: expected '{}', received '{}", corresponding_open_delim, delim)
             };
 
-            Error::new(ErrorKind::SyntaxError)
+            Message::new(MsgKind::SyntaxError)
                 .set_filename(&self.filename)
                 .set_position((self.line_no, self.col_no))
                 .set_message(error_message)
@@ -230,7 +230,7 @@ impl<'f> Lexer<'f> {
     }
 
 
-    fn match_general_token<'s>(&mut self, token_string: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Error> {
+    fn match_general_token<'s>(&mut self, token_string: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Message> {
         /* Matches all non-delimiting tokens */
 
         let new_token = match token_string.chars().next().unwrap() {
@@ -281,7 +281,7 @@ impl<'f> Lexer<'f> {
     }
 
 
-    fn match_token_string<'s>(&mut self, token_string: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Error> {
+    fn match_token_string<'s>(&mut self, token_string: &'s str, token_stack: &mut Vec<Token<'s>>) -> Result<(), Message> {
         /* Matches a token string and moves the lexer along */
         self.col_no += token_string.len();
 
@@ -294,7 +294,7 @@ impl<'f> Lexer<'f> {
     }
 }
 
-pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str) -> Result<Vec<Token<'s>>, Vec<Error>> {
+pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str) -> Result<Vec<Token<'s>>, Vec<Message>> {
     /* Tokenises a source string */
 
     let mut lexer = Lexer { filename, line_no: 1, col_no: 1 };
@@ -318,7 +318,7 @@ pub fn tokenise<'s, 'f>(source: &'s str, filename: &'f str) -> Result<Vec<Token<
 }
 
 
-fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) -> Result<(), Vec<Error>> {
+fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) -> Result<(), Vec<Message>> {
     /* Sets the newline step to 1 in each token */
 
     let mut newline_step = 0; // will always be a step of one
@@ -341,7 +341,7 @@ fn adjust_newline_step<'s>(tokens: &mut Vec<Token<'s>>) -> Result<(), Vec<Error>
             if *indent % newline_step == 0 {
                 *indent /= newline_step;
             } else {
-                return Error::new(ErrorKind::SyntaxError)
+                return Message::new(MsgKind::SyntaxError)
                         .set_position(token.position())
                         .set_message("Indentation doesn't match the step of previous indentation levels")
                         .into();
