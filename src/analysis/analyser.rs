@@ -83,7 +83,8 @@ pub struct Analyser<'m> {
     pub current_function: Option<&'m Function>,
     pub current_scope: Scope<'m>,
     pub current_position: (usize, usize),
-    pub errors: Vec<Message>
+    pub errors: Vec<Message>,
+    pub warnings: Vec<Message>
 }
 
 
@@ -97,7 +98,8 @@ impl<'m> Analyser<'m> {
             current_function: None,
             current_scope: Scope::new(),
             current_position: (1, 1),
-            errors: vec![]
+            errors: vec![],
+            warnings: vec![]
         }
     }
 
@@ -501,8 +503,65 @@ impl<'m> Analyser<'m> {
         for statement in function.body.iter() {
             self.analyse_statement(statement);
         }
+
+        if !self.contains_return(&function.body) && function.return_type.is_some() {
+            self.errors.push(Message::new(MsgKind::TypeError)
+                                .set_position(function.body.last().unwrap().first_position)
+                                .set_message(format!("Function '{}' is not guaranteed to return", function.name)));
+        }
     }
 
+
+    fn contains_return(&mut self, statements: &'m [Statement]) -> bool {
+       /* Returns whether a block of statements contains a return
+        *
+        * A dead code warning is generated if any code is unreachable after a return
+        */
+
+        let last_index = statements.len() - 1;
+
+        for (i, stmt) in statements.iter().enumerate() {
+            match &stmt.stmt_type {
+                StatementType::Return {..} => {
+                    if i < last_index {
+                        self.warnings.push(Message::new(MsgKind::DeadCodeWarning)
+                                            .set_position(stmt.first_position)
+                                            .set_message("Code following this return is unreachable"));
+                    }
+
+                    return true;
+                },
+
+                StatementType::Conditional { cases, default } => {
+                    if cases.len() == 1 && default.is_none() {
+                        continue;
+                    }
+
+                    let mut all_paths_return = true;
+
+                    for (_, block) in cases.iter() {
+                        if !self.contains_return(block) {
+                            all_paths_return = false;
+                        }
+                    }
+
+                    if let Some(block) = default {
+                        if !self.contains_return(block) {
+                            all_paths_return = false;
+                        }
+                    }
+
+                    if all_paths_return {
+                        return true;
+                    }
+                },
+
+                _ => {}
+            }
+        }
+
+        false
+    }
 
     /* Module analysis */
 

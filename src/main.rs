@@ -31,7 +31,17 @@ fn main() {
 
     static_analyser.analyse_module(&root_module);
 
-    for e in static_analyser.get_errors().iter() {
-        eprintln!("{}", e);
+    for w in static_analyser.get_warnings().iter() {
+        eprintln!("{}", w);
     }
+
+    if let Err(es) = static_analyser.get_analysis_result() {
+        for e in es.iter() {
+            eprintln!("{}", e);
+        }
+
+        return;
+    }
+
+    println!("Done!");
 }
