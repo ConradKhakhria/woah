@@ -1,14 +1,13 @@
 use crate::{
-    message::{ Message, MsgKind },
+    message::{ Message },
     parse::{
-        Function,
         Module
     },
 };
 use std::collections::HashMap;
 
 pub struct Compiler {
-    files: HashMap<String, Vec<String>>,
+    _files: HashMap<String, Vec<String>>,
     errors: Vec<Message>,
     warnings: Vec<Message>
 }
@@ -19,7 +18,7 @@ impl Compiler {
 
     pub fn new() -> Self {
         Compiler {
-            files: HashMap::new(),
+            _files: HashMap::new(),
             errors: vec![],
             warnings: vec![]
         }
@@ -54,7 +53,7 @@ impl Compiler {
     /* Compilation */
 
 
-    pub fn compile_single_file(&self, module: &Module) -> Result<(), ()> {
+    pub fn compile_single_file(&self, _module: &Module) -> Result<(), ()> {
         /* Compiles a single file with no regard to imports */
 
         Ok(())
