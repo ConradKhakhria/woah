@@ -1,5 +1,6 @@
 mod analysis;
 mod compile;
+mod interpret;
 mod message;
 mod line;
 mod parse;
@@ -8,6 +9,8 @@ mod token;
 use std::path::Path;
 
 fn main() {
+    let INTERPRETED = true; // this is not a permanent fixture
+
     let filename = std::env::args()
                     .filter(|a| a.ends_with(".woah"))
                     .next()
@@ -43,15 +46,25 @@ fn main() {
         return;
     }
 
-    /* Compilation */
 
-    let compiler = compile::Compiler::new();
-    let result = compiler.compile_single_file(&root_module);
+    /* Interpretation or compilation */
 
-    compiler.print_warnings()
+    if INTERPRETED {
+
+        let program = interpret::ProgramState::new(&root_module);
+
+    } else {
+
+        let compiler = compile::Compiler::new();
+        let result = compiler.compile_single_file(&root_module);
+    
+        compiler
+            .print_warnings()
             .print_errors();
+    
+        if result.is_ok() {
+            println!("Done!");
+        }
 
-    if result.is_ok() {
-        println!("Done!");
     }
 }
