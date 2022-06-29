@@ -33,29 +33,33 @@ impl<'m> ProgramState<'m> {
         * will be side effects
         */
 
-        let main_function = match self.root_module.functions.get("main") {
-            Some(f) => self.evaluate_function(f, vec![]),
+        match self.root_module.functions.get("main") {
+            Some(f) => {
+                self.evaluate_function(f, vec![]);
+            },
             None => panic!("No main function found in program")
-        };
+        }
     }
 
 
     fn evaluate_function(&mut self, function: &'m Function, args: Vec<&'m Value>) -> Option<Value> {
         /* Evaluates a function with arguments and returns the result */
 
-        let mut stack_frame = StackFrame::new();
+        self.stack.push(StackFrame::new());
     
         for stmt in function.body.iter() {
-            if let Some(return_value) = self.evaluate_statement(stmt, &mut stack_frame) {
+            if let Some(return_value) = self.evaluate_statement(stmt) {
                 return Some(return_value);
             }
         }
+
+        self.stack.pop();
 
         None
     }
 
 
-    fn evaluate_statement(&mut self, stmt: &'m Statement, stack_frame: &mut StackFrame) -> Option<Value> {
+    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Value> {
         /* Evaluates a statement, returning if it's a return statement */
 
         match &stmt.stmt_type {
