@@ -15,7 +15,7 @@ use std::{
 
 pub (super) struct StackFrame {
     names: Vec<String>,
-    values: Vec<Rc<Value>>
+    values: Vec<Rc<RefCell<Value>>>
 }
 
 
@@ -28,7 +28,7 @@ impl StackFrame {
     }
 
 
-    pub fn get_value<T: ToString>(&self, value_name: &T) -> Option<Rc<Value>> {
+    pub fn get_value<T: ToString>(&self, value_name: &T) -> Option<Rc<RefCell<Value>>> {
         /* Attempts to retrieve a value from the stack frame */
 
         let value_name = value_name.to_string();
