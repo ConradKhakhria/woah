@@ -26,6 +26,9 @@ impl<'m> ProgramState<'m> {
     }
 
 
+    /* Evaluation */
+
+
     pub fn evaluate(&mut self) {
        /* Executes a module
         *
@@ -53,6 +56,9 @@ impl<'m> ProgramState<'m> {
 
         None
     }
+
+
+    /* Statement evaluation */
 
 
     fn evaluate_statement(&mut self, stmt: &'m Statement, stack_frame: &mut StackFrame) -> Option<Value> {
