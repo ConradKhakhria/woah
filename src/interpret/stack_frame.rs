@@ -13,13 +13,13 @@ use std::{
 };
 
 
-pub (super) struct StackFrame {
+pub (super) struct StackFrame<'m> {
     names: Vec<String>,
-    values: Vec<Rc<RefCell<Value>>>
+    values: Vec<Rc<RefCell<Value<'m>>>>
 }
 
 
-impl StackFrame {
+impl<'m> StackFrame<'m> {
     pub fn new() -> Self {
         StackFrame {
             names: Vec::new(),
@@ -28,7 +28,7 @@ impl StackFrame {
     }
 
 
-    pub fn get_value<T: ToString>(&self, value_name: &T) -> Option<Rc<RefCell<Value>>> {
+    pub fn get_value<T: ToString>(&self, value_name: &T) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Attempts to retrieve a value from the stack frame */
 
         let value_name = value_name.to_string();

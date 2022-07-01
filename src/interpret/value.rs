@@ -1,3 +1,4 @@
+use crate::parse::Function;
 use std::{
     cell::RefCell,
     rc::Rc,
@@ -5,20 +6,22 @@ use std::{
 
 
 #[derive(Clone)]
-pub (super) enum Value {
-    Array(Vec<Rc<RefCell<Value>>>),
+pub (super) enum Value<'m> {
+    Array(Vec<Rc<RefCell<Value<'m>>>>),
 
     Bool(bool),
 
-    Int(i64),
-
     Float(f64),
+
+    Function(&'m Function),
+
+    Int(i64),
 
     String(String),
 }
 
 
-impl Value {
+impl<'m> Value<'m> {
     pub fn rc_refcell(self) -> Rc<RefCell<Self>> {
         /* Wraps self in an Rc */
 

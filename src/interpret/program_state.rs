@@ -19,7 +19,7 @@ use std::{
 
 pub struct ProgramState<'m> {
     root_module: &'m Module,
-    stack: Vec<StackFrame>
+    stack: Vec<StackFrame<'m>>
 }
 
 
@@ -41,14 +41,14 @@ impl<'m> ProgramState<'m> {
 
         match self.root_module.functions.get("main") {
             Some(f) => {
-                self.evaluate_function(f, vec![]);
+                self.evaluate_function_call(f, vec![]);
             },
             None => panic!("No main function found in program")
         }
     }
 
 
-    fn evaluate_function(&mut self, function: &'m Function, args: Vec<&'m Value>) -> Option<Value> {
+    fn evaluate_function_call(&mut self, function: &'m Function, args: Vec<&'m Value>) -> Option<Value<'m>> {
         /* Evaluates a function with arguments and returns the result */
 
         self.stack.push(StackFrame::new());
@@ -67,7 +67,7 @@ impl<'m> ProgramState<'m> {
 
     /* Statement evaluation */
 
-    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Value> {
+    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Value<'m>> {
         /* Evaluates a statement, returning if it's a return statement */
 
         match &stmt.stmt_type {
@@ -84,12 +84,32 @@ impl<'m> ProgramState<'m> {
 
     /* Expression evaluation */
 
-    fn evaluate_expr(&mut self, expr: &Expr) -> Rc<RefCell<Value>> {
+    fn evaluate_expr(&mut self, expr: &Expr) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates an expression, panicking if an error takes place */
 
         match &expr.expr_kind {
             ExprKind::ArrayIndexing { array, index } => {
                 self.eval_array_indexing(array, index)
+            }
+            
+            ExprKind::ArrayLiteral { elems } => {
+                self.eval_array_literal(elems)
+            }
+
+            ExprKind::AttrRes { parent, attr_name } => {
+                unimplemented!()
+            }
+
+            ExprKind::Compound { operator, left, right } => {
+                self.eval_compound(operator, left, right)
+            }
+
+            ExprKind::Float(f) => {
+                Value::Float(f.parse().unwrap()).rc_refcell()
+            }
+
+            ExprKind::FunctionCall { function, args } => {
+                unimplemented!()
             }
 
             _ => unimplemented!()
@@ -97,7 +117,7 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn eval_array_indexing(&mut self, array: &Box<Expr>, index: &Box<Expr>) -> Rc<RefCell<Value>> {
+    fn eval_array_indexing(&mut self, array: &Box<Expr>, index: &Box<Expr>) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates an array indexing expression */
 
         let index = match *self.evaluate_expr(index).borrow() {
@@ -112,7 +132,7 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn eval_array_literal(&mut self, elems: &Vec<Expr>) -> Rc<RefCell<Value>> {
+    fn eval_array_literal(&mut self, elems: &Vec<Expr>) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates an array literal */
 
         let mut array = Vec::new();
@@ -125,20 +145,20 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn eval_compound(&mut self, op: &String, left: &Expr, right: &Expr) -> Rc<RefCell<Value>> {
+    fn eval_compound(&mut self, operator: &String, left: &Expr, right: &Expr) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates a compound expression */
 
         let left = self.evaluate_expr(left);
         let right = self.evaluate_expr(right);
 
         let result = match (&*left.borrow(), &*right.borrow()) {
-            (Value::Int(x), Value::Int(y)) => Self::eval_integer_compound(op, *x, *y),
+            (Value::Int(x), Value::Int(y)) => Self::eval_integer_compound(operator, *x, *y),
 
-            (Value::Int(x), Value::Float(y)) => Self::eval_float_compound(op, *x as f64, *y),
+            (Value::Int(x), Value::Float(y)) => Self::eval_float_compound(operator, *x as f64, *y),
 
-            (Value::Float(x), Value::Int(y)) => Self::eval_float_compound(op, *x, *y as f64),
+            (Value::Float(x), Value::Int(y)) => Self::eval_float_compound(operator, *x, *y as f64),
 
-            (Value::Float(x), Value::Float(y)) => Self::eval_float_compound(op, *x, *y),
+            (Value::Float(x), Value::Float(y)) => Self::eval_float_compound(operator, *x, *y),
 
             _ => unreachable!()
         };
@@ -147,7 +167,7 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn eval_integer_compound(op: &String, x: i64, y: i64) -> Rc<RefCell<Value>> {
+    fn eval_integer_compound(op: &String, x: i64, y: i64) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates a compound expression of 2 integers */
 
         let result = match op.as_str() {
@@ -171,7 +191,7 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn eval_float_compound(op: &String, x: f64, y: f64) -> Rc<RefCell<Value>> {
+    fn eval_float_compound(op: &String, x: f64, y: f64) -> Rc<RefCell<Value<'m>>> {
         /* Evaluates a compound expression of 2 floats */
 
         let result = match op.as_str() {
