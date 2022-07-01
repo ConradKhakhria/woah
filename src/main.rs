@@ -8,9 +8,9 @@ mod token;
 
 use std::path::Path;
 
-fn main() {
-    let INTERPRETED = true; // this is not a permanent fixture
+const INTERPRETED: bool = true; // this is not a permanent fixture
 
+fn main() {
     let filename = std::env::args()
                     .filter(|a| a.ends_with(".woah"))
                     .next()
@@ -51,7 +51,9 @@ fn main() {
 
     if INTERPRETED {
 
-        let program = interpret::ProgramState::new(&root_module);
+        let mut program = interpret::ProgramState::new(&root_module);
+
+        program.evaluate();
 
     } else {
 
