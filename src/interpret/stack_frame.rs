@@ -41,4 +41,14 @@ impl<'m> StackFrame<'m> {
 
         None
     }
+
+
+    pub fn add_value<T: ToString>(&mut self, value_name: &T, value: &Rc<RefCell<Value<'m>>>) {
+        /* Adds a value to the stack frame */
+
+        let value_name = value_name.to_string();
+
+        self.names.push(value_name);
+        self.values.push(Rc::clone(value));
+    }
 }
