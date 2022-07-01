@@ -41,17 +41,24 @@ impl<'m> ProgramState<'m> {
 
         match self.root_module.functions.get("main") {
             Some(f) => {
-                self.evaluate_function_call(f, vec![]);
+                self.evaluate_function_call(f, &vec![]);
             },
             None => panic!("No main function found in program")
         }
     }
 
 
-    fn evaluate_function_call(&mut self, function: &'m Function, args: Vec<&'m Value>) -> Option<Value<'m>> {
+    fn evaluate_function_call(&mut self, function: &'m Function, args: &Vec<Expr>) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Evaluates a function with arguments and returns the result */
 
-        self.stack.push(StackFrame::new());
+        let mut stack_frame = StackFrame::new();
+
+        for (i, arg) in args.iter().enumerate() {
+            let arg = self.evaluate_expr(arg);
+            stack_frame.add_value(&function.args[i].arg_name, &arg);
+        }
+
+        self.stack.push(stack_frame);
     
         for stmt in function.body.iter() {
             if let Some(return_value) = self.evaluate_statement(stmt) {
@@ -67,7 +74,7 @@ impl<'m> ProgramState<'m> {
 
     /* Statement evaluation */
 
-    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Value<'m>> {
+    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Evaluates a statement, returning if it's a return statement */
 
         match &stmt.stmt_type {
@@ -109,10 +116,30 @@ impl<'m> ProgramState<'m> {
             }
 
             ExprKind::FunctionCall { function, args } => {
-                unimplemented!()
+                match *self.evaluate_expr(function).borrow() {
+                    Value::Function(f) => {
+                        self.evaluate_function_call(f, args)    
+                            .expect("Function does not return a value")
+                    },
+                    _ => panic!("Expected function")
+                }
             }
 
-            _ => unimplemented!()
+            ExprKind::Identifier(ident) => {
+                self.eval_identifier(ident)
+            }
+
+            ExprKind::Integer(i) => {
+                Value::Int(i.parse().unwrap()).rc_refcell()
+            }
+
+            ExprKind::String(s) => {
+                Value::String(s.clone()).rc_refcell()
+            }
+
+            ExprKind::Unary { operator, operand } => {
+                self.eval_unary(operator, operand)
+            }
         }
     }
 
@@ -212,5 +239,37 @@ impl<'m> ProgramState<'m> {
         };
 
         Rc::new(RefCell::new(result))
+    }
+
+
+    fn eval_identifier(&mut self, ident: &String) -> Rc<RefCell<Value<'m>>> {
+        /* Resolves an identifier */
+
+        if let Some(func) = self.root_module.functions.get(ident) {
+            Value::Function(func).rc_refcell()
+        } else if let Some(value) = self.stack.last().unwrap().get_value(ident) {
+            value
+        } else {
+            panic!("Unknown identifier '{}'", ident)
+        }
+    }
+
+
+    fn eval_unary(&mut self, operator: &String, operand: &Expr) -> Rc<RefCell<Value<'m>>> {
+        /* Evaluates a unary expression */
+
+        let operand = self.evaluate_expr(operand);
+
+        match operator.as_str() {
+            "-" => {
+                match *operand.borrow() {
+                    Value::Float(f) => Value::Float(-f).rc_refcell(),
+                    Value::Int(i) => Value::Int(-i).rc_refcell(),
+                    _ => panic!("Expected numeric operand for '{}' unary expression", operator)
+                }
+            },
+
+            _ => panic!("Unknown unary operator")
+        }
     }
 }
