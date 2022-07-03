@@ -41,7 +41,7 @@ impl<'m> ProgramState<'m> {
 
         match self.root_module.functions.get("main") {
             Some(f) => {
-                self.evaluate_function_call(f, &vec![]);
+                println!("{:?}", self.evaluate_function_call(f, &vec![]));
             },
             None => panic!("No main function found in program")
         }
@@ -74,15 +74,66 @@ impl<'m> ProgramState<'m> {
 
     /* Statement evaluation */
 
+    fn evaluate_block<I: IntoIterator<Item = &'m Statement>>(&mut self, block: I) ->  Option<Rc<RefCell<Value<'m>>>> {
+        /* Evaluates a block of statements */
+
+        for stmt in block.into_iter() {
+            if let Some(result) = self.evaluate_statement(stmt) {
+                return Some(result)
+            }
+        }
+
+        None
+    }
+
+
     fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Evaluates a statement, returning if it's a return statement */
 
         match &stmt.stmt_type {
             StatementType::Declare { value_name, value, .. } => {
-                unimplemented!()
+                self.evaluate_declaration(value_name, value);
+            }
+
+            StatementType::Conditional { cases, default } => {
+                return self.evaluate_conditional(cases, default);
+            }
+
+            StatementType::RawExpr { expr } => {
+                return Some(self.evaluate_expr(expr));
+            },
+
+            StatementType::Return { value } => {
+                return match value {
+                    Some(e) => Some(self.evaluate_expr(e)),
+                    None => None
+                }
             }
 
             _ => unimplemented!()
+        }
+
+        None
+    }
+
+
+    fn evaluate_conditional(&mut self, cases: &'m Vec<(Expr, Vec<Statement>)>, default: &'m Option<Vec<Statement>>) -> Option<Rc<RefCell<Value<'m>>>> {
+        /* Evaluates a conditional block */
+
+        for (condition, block) in cases.iter() {
+            let condition = match *self.evaluate_expr(condition).borrow() {
+                Value::Bool(b) => b,
+                _ => unreachable!()
+            };
+
+            if condition {
+                return self.evaluate_block(block)
+            }
+        }
+
+        match default {
+            Some(block) => self.evaluate_block(block),
+            None => None
         }
     }
 
