@@ -60,57 +60,58 @@ impl<'m> ProgramState<'m> {
 
         self.stack.push(stack_frame);
     
-        for stmt in function.body.iter() {
-            if let Some(return_value) = self.evaluate_statement(stmt) {
-                return Some(return_value);
-            }
-        }
+        let return_value = self.evaluate_block(&function.body);
 
         self.stack.pop();
 
-        None
+        return_value
     }
 
 
     /* Statement evaluation */
 
-    fn evaluate_block<I: IntoIterator<Item = &'m Statement>>(&mut self, block: I) ->  Option<Rc<RefCell<Value<'m>>>> {
-        /* Evaluates a block of statements */
+    fn evaluate_block<I: IntoIterator<Item = &'m Statement>>(&mut self, block: I) -> Option<Rc<RefCell<Value<'m>>>> {
+       /* Evaluates a block of statements
+        *
+        * Returns
+        * -------
+        * If a return takes place somewhere within the block
+        *     Some(a return value, or a NoValue)
+        * Otherwise
+        *     None
+        */
 
         for stmt in block.into_iter() {
-            if let Some(result) = self.evaluate_statement(stmt) {
-                return Some(result)
-            }
-        }
-
-        None
-    }
-
-
-    fn evaluate_statement(&mut self, stmt: &'m Statement) -> Option<Rc<RefCell<Value<'m>>>> {
-        /* Evaluates a statement, returning if it's a return statement */
-
-        match &stmt.stmt_type {
-            StatementType::Declare { value_name, value, .. } => {
-                self.evaluate_declaration(value_name, value);
-            }
-
-            StatementType::Conditional { cases, default } => {
-                return self.evaluate_conditional(cases, default);
-            }
-
-            StatementType::RawExpr { expr } => {
-                return Some(self.evaluate_expr(expr));
-            },
-
-            StatementType::Return { value } => {
-                return match value {
-                    Some(e) => Some(self.evaluate_expr(e)),
-                    None => None
+            match &stmt.stmt_type {
+                StatementType::Declare { value_name, value, .. } => {
+                    self.evaluate_declaration(value_name, value);
                 }
-            }
+    
+                StatementType::Conditional { cases, default } => {
+                    if let Some(return_value) = self.evaluate_conditional(cases, default) {
+                        return Some(return_value);
+                    }
+                }
+    
+                StatementType::RawExpr { expr } => {
+                    self.evaluate_expr(expr); // This is of course purely for the sake of side effects
+                }
+    
+                StatementType::Return { value } => {
+                    return match value {
+                        Some(e) => Some(self.evaluate_expr(e)),
+                        None => Some(Value::NoValue.rc_refcell())
+                    }
+                }
 
-            _ => unimplemented!()
+                StatementType::WhileLoop { condition, block } => {
+                    if let Some(return_value) = self.evaluate_while_loop(condition, block) {
+                        return Some(return_value);
+                    }
+                }
+    
+                _ => unimplemented!()
+            }
         }
 
         None
@@ -147,6 +148,27 @@ impl<'m> ProgramState<'m> {
         };
 
         self.stack.last_mut().unwrap().add_value(value_name, &value);
+    }
+
+
+    fn evaluate_while_loop(&mut self, condition: &Expr, block: &'m Vec<Statement>) -> Option<Rc<RefCell<Value<'m>>>> {
+        /* Evaluates a while loop */
+
+        loop {
+            let condition = match *self.evaluate_expr(condition).borrow() {
+                Value::Bool(b) => b,
+                _ => unreachable!()
+            };
+
+            if condition {
+                match self.evaluate_block(block) {
+                    Some(return_value) => return Some(return_value),
+                    None => {}
+                }
+            } else {
+                return None;
+            }
+        }
     }
 
 
