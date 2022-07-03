@@ -5,7 +5,7 @@ use std::{
 };
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub (super) enum Value<'m> {
     Array(Vec<Rc<RefCell<Value<'m>>>>),
 
