@@ -41,7 +41,10 @@ impl<'m> ProgramState<'m> {
 
         match self.root_module.functions.get("main") {
             Some(f) => {
-                println!("{:?}", self.evaluate_function_call(f, &vec![]));
+                match self.evaluate_function_call(f, &vec![]) {
+                    Some(r) => println!("{}", r.borrow()),
+                    None => println!()
+                }
             },
             None => panic!("No main function found in program")
         }
@@ -83,6 +86,10 @@ impl<'m> ProgramState<'m> {
 
         for stmt in block.into_iter() {
             match &stmt.stmt_type {
+                StatementType::Assign { assigned_to, new_value } => {
+                    self.evaluate_assignment(assigned_to, new_value);
+                }
+
                 StatementType::Declare { value_name, value, .. } => {
                     self.evaluate_declaration(value_name, value);
                 }
@@ -115,6 +122,13 @@ impl<'m> ProgramState<'m> {
         }
 
         None
+    }
+
+
+    fn evaluate_assignment(&mut self, assigned_to: &Expr, new_value: &Expr) {
+        /* Performs value assignment */
+
+        let new_value = self.evaluate_expr(new_value);
     }
 
 
