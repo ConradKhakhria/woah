@@ -15,7 +15,7 @@ use std::{
 
 pub (super) struct StackFrame<'m> {
     names: Vec<String>,
-    values: Vec<Rc<RefCell<Value<'m>>>>
+    values: Vec<Option<Rc<RefCell<Value<'m>>>>>
 }
 
 
@@ -35,7 +35,10 @@ impl<'m> StackFrame<'m> {
 
         for (i, name) in self.names.iter().enumerate() {
             if name == &value_name {
-                return Some(Rc::clone(&self.values[i]))
+                return match &self.values[i] {
+                    Some(v) => Some(Rc::clone(v)),
+                    None => None
+                }
             }
         }
 
@@ -43,12 +46,13 @@ impl<'m> StackFrame<'m> {
     }
 
 
-    pub fn add_value<T: ToString>(&mut self, value_name: &T, value: &Rc<RefCell<Value<'m>>>) {
+    pub fn add_value<T: ToString>(&mut self, value_name: &T, value: &Option<Rc<RefCell<Value<'m>>>>) {
         /* Adds a value to the stack frame */
 
-        let value_name = value_name.to_string();
-
-        self.names.push(value_name);
-        self.values.push(Rc::clone(value));
+        self.names.push(value_name.to_string());
+        self.values.push(match value {
+            Some(v) => Some(Rc::clone(v)),
+            None => None
+        });
     }
 }

@@ -55,7 +55,7 @@ impl<'m> ProgramState<'m> {
 
         for (i, arg) in args.iter().enumerate() {
             let arg = self.evaluate_expr(arg);
-            stack_frame.add_value(&function.args[i].arg_name, &arg);
+            stack_frame.add_value(&function.args[i].arg_name, &Some(arg));
         }
 
         self.stack.push(stack_frame);
@@ -78,14 +78,24 @@ impl<'m> ProgramState<'m> {
         /* Evaluates a statement, returning if it's a return statement */
 
         match &stmt.stmt_type {
-            // For this simplified implementation, we will only allow
-            // assignments to atomic values, arrays, and array elements
-            StatementType::Assign { assigned_to, new_value } => {
+            StatementType::Declare { value_name, value, .. } => {
                 unimplemented!()
             }
 
             _ => unimplemented!()
         }
+    }
+
+
+    fn evaluate_declaration(&mut self, value_name: &String, expr: &Option<Expr>) {
+        /* Adds a value to the stack frame */
+
+        let value = match expr {
+            Some(e) => Some(self.evaluate_expr(e)),
+            None => None
+        };
+
+        self.stack.last_mut().unwrap().add_value(value_name, &value);
     }
 
 
