@@ -17,6 +17,8 @@ pub (super) enum Value<'m> {
 
     Int(i64),
 
+    NoValue,
+
     String(String),
 }
 
