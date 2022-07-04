@@ -7,7 +7,7 @@ use std::{
     string::ToString
 };
 
-
+#[derive(Debug)]
 struct StackElement<'m> {
     name: String,
     value: Option<Rc<RefCell<Value<'m>>>>
@@ -25,30 +25,27 @@ impl<'m> StackElement<'m> {
 
 #[derive(Debug)]
 pub (super) struct StackFrame<'m> {
-    names: Vec<Vec<String>>,
-    values: Vec<Vec<Option<Rc<RefCell<Value<'m>>>>>>
+    values: Vec<Vec<StackElement<'m>>>
 }
 
 
 impl<'m> StackFrame<'m> {
     pub fn new() -> Self {
         StackFrame {
-            names:  Vec::new(),
             values: Vec::new()
         }
     }
 
 
-    pub fn get_value<T: ToString>(&self, value_name: &T) -> Option<Rc<RefCell<Value<'m>>>> {
+    pub fn get_value(&self, value_name: &str) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Attempts to retrieve a value from the stack frame */
 
-        let value_name = value_name.to_string();
-
-        for scope_index in 0..self.names.len() {
-            for (i, name) in self.names[scope_index].iter().enumerate() {
-                if *name == value_name {
-                    if let Some(v) = &self.values[scope_index][i] {
-                        return Some(Rc::clone(v));
+        for scope in self.values.iter() {
+            for element in scope.iter() {
+                if element.is_called(value_name) {
+                    match &element.value {
+                        Some(v) => return Some(Rc::clone(v)),
+                        None => panic!("'{}' has not been assigned a value yet", value_name)
                     }
                 }
             }
@@ -61,7 +58,6 @@ impl<'m> StackFrame<'m> {
     pub fn add_scope(&mut self) {
         /* Adds a new scope to the stack frame */
 
-        self.names.push(vec![]);
         self.values.push(vec![]);
     }
 
@@ -69,32 +65,33 @@ impl<'m> StackFrame<'m> {
     pub fn pop_scope(&mut self) {
         /* Removes the top scope from the stack frame */
 
-        self.names.pop();
         self.values.pop();
     }
 
 
-    pub fn add_value<T: ToString>(&mut self, value_name: &T, value: &Option<Rc<RefCell<Value<'m>>>>) {
+    pub fn add_value<S: ToString>(&mut self, value_name: S, value: &Option<Rc<RefCell<Value<'m>>>>) {
         /* Adds a value to the stack frame */
 
-        self.names.last_mut().unwrap().push(value_name.to_string());
-        self.values.last_mut().unwrap().push(match value {
-            Some(v) => Some(Rc::clone(v)),
-            None => None
-        });
+        self.values.last_mut().unwrap().push(
+            StackElement {
+                name: value_name.to_string(),
+                value: match value {
+                    Some(v) => Some(Rc::clone(v)),
+                    None => None
+                }
+            }
+        );
     }
 
 
-    pub fn remove_value<T: ToString>(&mut self, value_name: &T) {
+    pub fn remove_value(&mut self, value_name: &str) {
         /* Attempts to remove a value from the stack frame */
-    
-        let value_name = value_name.to_string();
 
-        for scope_index in (0..self.values.len()).rev() {
-            for i in (0..self.values[scope_index].len()).rev() {
-                if self.names[scope_index][i] == value_name {
-                    self.names[scope_index].swap_remove(i);
-                    self.values[scope_index].swap_remove(i);
+        for scope_index in 0..self.values.len() {
+            for element_index in 0..self.values[scope_index].len() {
+                if self.values[scope_index][element_index].is_called(value_name) {
+                    self.values[scope_index].swap_remove(element_index);
+                    return;
                 }
             }
         }
