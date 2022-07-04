@@ -1,12 +1,17 @@
-use lazy_static::lazy_static;
-use std::collections::HashSet;
+use crate::parse::TypeKind;
+use std::rc::Rc;
 
-pub fn is_builtin(function_name: &str) -> bool {
-    lazy_static! {
-        static ref BUILT_IN_FUNCTIONS: HashSet<&'static str> = HashSet::from([
-            "println"
-        ]);
+pub fn type_of_builtin_function(function_name: &str) -> Option<Rc<TypeKind>> {
+    /* Creates a TypeKind out of a built-in function */
+
+    match function_name {
+        "println" => Some(Rc::new(
+            TypeKind::Function {
+                args: vec![ TypeKind::Any.rc() ],
+                return_type: None
+            }
+        )),
+
+        _ => None
     }
-
-    BUILT_IN_FUNCTIONS.contains(function_name)
 }
