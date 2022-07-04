@@ -1,5 +1,5 @@
 use crate::{
-    analysis::Analyser,
+    analysis::{ Analyser, type_of_builtin_function },
     message::{ Message, MsgKind },
     parse::{
         Expr,
@@ -215,6 +215,8 @@ fn get_identifier_type(analyser: &mut Analyser, ident: &String) -> TypeResult {
         Ok((*m).into())
     } else if let Some(f) = analyser.current_module.unwrap().functions.get(ident) {
         Ok(f.into())
+    } else if let Some(t) = type_of_builtin_function(ident) {
+        Ok(t)
     } else {
         Message::new(MsgKind::NameError)
             .set_position(analyser.current_position)
