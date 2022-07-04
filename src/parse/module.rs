@@ -1,7 +1,9 @@
 use crate::{
+    analysis::{ BUILT_IN_FUNCTIONS, type_of_builtin_function },
     message::{ Message, MsgKind },
     line::create_lines,
     parse::{
+        Argument,
         Function,
         Import,
         TypeKind
@@ -66,7 +68,7 @@ impl Module {
 
         /* Collect functions and imports */
 
-        let mut functions = HashMap::new();
+        let mut functions = Self::create_builtin_functions();
         let mut imports = vec![];
         let mut errors = vec![];
 
@@ -102,6 +104,44 @@ impl Module {
         } else {
             Err(errors.iter().map(|e| e.clone().set_line(&source_lines)).collect())
         }
+    }
+
+
+    fn create_builtin_functions() -> HashMap<String, Function> {
+        /* Generates Function structs for all built-in functions */
+
+        let mut functions = HashMap::new();
+
+        for function_name in BUILT_IN_FUNCTIONS.iter() {
+            let function_type = type_of_builtin_function(function_name).unwrap();
+
+            let name = function_name.to_string();
+
+            let (arg_types, return_type) = match &*function_type {
+                TypeKind::Function { args, return_type } => (args, return_type),
+                _ => unreachable!()
+            };
+    
+            let mut args = vec![];
+    
+            for (i, arg_type) in arg_types.iter().enumerate() {
+                args.push(Argument {
+                    arg_name: format!("_arg{}", i + 1),
+                    arg_type: Rc::clone(arg_type)
+                });
+            }
+
+            let function = Function {
+                name: name.clone(),
+                args,
+                return_type: Rc::clone(return_type),
+                body: vec![]
+            };
+
+            functions.insert(name, function);
+        }
+
+        functions
     }
 
 
