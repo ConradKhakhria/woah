@@ -192,14 +192,7 @@ fn get_funcall_type(analyser: &mut Analyser, function: &Expr, args: &Vec<Expr>) 
     }
 
     if errors.is_empty() {
-        if let Some(tp) = function_return_type {
-            Ok(Rc::clone(tp))
-        } else {
-            Message::new(MsgKind::TypeError)
-                .set_position(function.first_position)
-                .set_message("Function does not return a value")
-                .into()
-        }
+        Ok(Rc::clone(function_return_type))
     } else {
         Err(errors)
     }
