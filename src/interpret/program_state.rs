@@ -220,7 +220,7 @@ impl<'m> ProgramState<'m> {
                 self.eval_array_literal(elems)
             }
 
-            ExprKind::AttrRes { parent, attr_name } => {
+            ExprKind::AttrRes { .. } => {
                 unimplemented!()
             }
 
