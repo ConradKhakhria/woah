@@ -429,8 +429,14 @@ impl<'m> Analyser<'m> {
 
         let current_function = self.current_function.unwrap();
 
-        match (&current_function.return_type, value) {
-            (Some(ret_type), Some(ret_value)) => {
+        match (&*current_function.return_type, value) {
+            (TypeKind::NoReturnType, Some(_)) => {
+                self.errors.push(Message::new(MsgKind::TypeError)
+                                    .set_position(pos)
+                                    .set_message(format!("Function '{}' does not return a value", current_function.name)))
+            },
+
+            (ret_type, Some(ret_value)) => {
                 let value_type = match get_expr_type(self, ret_value) {
                     Ok(t) => t,
                     Err(ref mut es) => {
@@ -439,7 +445,7 @@ impl<'m> Analyser<'m> {
                     }
                 };
 
-                if &**ret_type != &*value_type {
+                if *ret_type != *value_type {
                     self.errors.push(Message::new(MsgKind::TypeError)
                                         .set_position(pos)
                                         .set_message(format!(
@@ -451,17 +457,11 @@ impl<'m> Analyser<'m> {
                 }
             }
 
-            (Some(ret_type), None) => {
+            (ret_type, None) => {
                 self.errors.push(Message::new(MsgKind::TypeError)
                                     .set_position(pos)
                                     .set_message(format!("Function '{}' returns a value of type {}", current_function.name, ret_type)))
             }
-
-            (None, Some(_)) => {
-                self.errors.push(Message::new(MsgKind::TypeError)
-                                    .set_position(pos)
-                                    .set_message(format!("Function '{}' does not return a value", current_function.name)))
-            },
 
             _ => {}
         }
@@ -524,14 +524,16 @@ impl<'m> Analyser<'m> {
             self.analyse_statement(statement);
         }
 
-        if !self.contains_return(&function.body) && function.return_type.is_some() {
-            self.errors.push(Message::new(MsgKind::TypeError)
-                                .set_position(function.body.last().unwrap().first_position)
-                                .set_message(format!(
-                                    "Function '{}' does not return type {} in all cases",
-                                    function.name,
-                                    function.return_type.as_ref().unwrap()
-                                )));
+        if let TypeKind::NoReturnType = &*function.return_type {} else {
+            if !self.contains_return(&function.body){
+                self.errors.push(Message::new(MsgKind::TypeError)
+                                    .set_position(function.body.last().unwrap().first_position)
+                                    .set_message(format!(
+                                        "Function '{}' does not return type {} in all cases",
+                                        function.name,
+                                        function.return_type.as_ref()
+                                    )));
+            }
         }
     }
 
