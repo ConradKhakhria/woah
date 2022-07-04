@@ -32,6 +32,15 @@ impl<'m> ProgramState<'m> {
     }
 
 
+    fn get_stack_frame(&mut self) -> &mut StackFrame<'m> {
+        /* Returns a reference to the current stack frame */
+
+        self.stack.last_mut().unwrap()
+    }
+
+
+    /* Evaluation */
+
     pub fn evaluate(&mut self) {
        /* Executes a module
         *
@@ -90,8 +99,8 @@ impl<'m> ProgramState<'m> {
                     self.evaluate_assignment(assigned_to, new_value);
                 }
 
-                StatementType::Declare { value_name, value, .. } => {
-                    self.evaluate_declaration(value_name, value);
+                StatementType::Declare { value_name, value, constant, .. } => {
+                    self.evaluate_declaration(value_name, value, *constant);
                 }
     
                 StatementType::Conditional { cases, default } => {
@@ -128,7 +137,10 @@ impl<'m> ProgramState<'m> {
     fn evaluate_assignment(&mut self, assigned_to: &Expr, new_value: &Expr) {
         /* Performs value assignment */
 
+        let assigned_to = self.evaluate_expr(assigned_to);
         let new_value = self.evaluate_expr(new_value);
+
+        *assigned_to.borrow_mut() = (*new_value).borrow().clone();
     }
 
 
@@ -153,11 +165,19 @@ impl<'m> ProgramState<'m> {
     }
 
 
-    fn evaluate_declaration(&mut self, value_name: &String, expr: &Option<Expr>) {
+    fn evaluate_declaration(&mut self, value_name: &String, expr: &Option<Expr>, constant: bool) {
         /* Adds a value to the stack frame */
 
         let value = match expr {
-            Some(e) => Some(self.evaluate_expr(e)),
+            Some(e) => {
+                let value = self.evaluate_expr(e);
+
+                Some(if constant {
+                        value.borrow().clone().rc_refcell()
+                } else {
+                    value
+                })
+            },
             None => None
         };
 
@@ -262,7 +282,7 @@ impl<'m> ProgramState<'m> {
         let mut array = Vec::new();
 
         for elem in elems.iter() {
-            array.push(self.evaluate_expr(elem))
+            array.push(self.evaluate_expr(elem).borrow().clone().rc_refcell())
         }
 
         Value::Array(array).rc_refcell()
