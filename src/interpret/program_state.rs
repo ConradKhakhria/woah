@@ -172,8 +172,8 @@ impl<'m> ProgramState<'m> {
             Some(e) => {
                 let value = self.evaluate_expr(e);
 
-                Some(if constant {
-                        value.borrow().clone().rc_refcell()
+                Some(if !constant {
+                    value.borrow().clone().rc_refcell()
                 } else {
                     value
                 })
@@ -282,7 +282,7 @@ impl<'m> ProgramState<'m> {
         let mut array = Vec::new();
 
         for elem in elems.iter() {
-            array.push(self.evaluate_expr(elem).borrow().clone().rc_refcell())
+            array.push(self.evaluate_expr(elem))
         }
 
         Value::Array(array).rc_refcell()
