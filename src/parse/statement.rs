@@ -344,7 +344,7 @@ fn parse_assignment(line: &Line) -> ParseOption {
 
 
 fn report_extraneous_elif_else(line: &Line) -> ParseOption {
-    /* Parses an else statement */
+    /* Returns an error if an elif or else is deteceted without a corresponding if */
 
     let first_token_string = line.line_tokens[0].to_string();
 
