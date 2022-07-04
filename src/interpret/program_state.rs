@@ -96,8 +96,6 @@ impl<'m> ProgramState<'m> {
         self.get_stack_frame().add_scope();
 
         for stmt in block.into_iter() {
-            println!("{:?}", self.stack);
-
             match &stmt.stmt_type {
                 StatementType::Assign { assigned_to, new_value } => {
                     self.evaluate_assignment(assigned_to, new_value);
@@ -110,6 +108,7 @@ impl<'m> ProgramState<'m> {
                 StatementType::Conditional { cases, default } => {
                     if let Some(return_value) = self.evaluate_conditional(cases, default) {
                         self.get_stack_frame().pop_scope();
+
                         return Some(return_value);
                     }
                 }
@@ -123,16 +122,20 @@ impl<'m> ProgramState<'m> {
                 }
     
                 StatementType::Return { value } => {
-                    self.get_stack_frame().pop_scope();
-                    return match value {
+                    let return_value = match value {
                         Some(e) => Some(self.evaluate_expr(e)),
                         None => Some(Value::NoValue.rc_refcell())
-                    }
+                    };
+
+                    self.get_stack_frame().pop_scope();
+
+                    return return_value;
                 }
 
                 StatementType::WhileLoop { condition, block } => {
                     if let Some(return_value) = self.evaluate_while_loop(condition, block) {
                         self.get_stack_frame().pop_scope();
+
                         return Some(return_value);
                     }
                 }
@@ -206,7 +209,7 @@ impl<'m> ProgramState<'m> {
 
                 let ret_val = self.evaluate_block(block);
 
-                self.get_stack_frame().remove_value(iterator);
+                self.get_stack_frame().remove_value(iterator.as_str());
 
                 if let Some(rv) = ret_val {
                     return Some(rv);
@@ -399,7 +402,7 @@ impl<'m> ProgramState<'m> {
 
         if let Some(func) = self.root_module.functions.get(ident) {
             Value::Function(func).rc_refcell()
-        } else if let Some(value) = self.get_stack_frame().get_value(ident) {
+        } else if let Some(value) = self.get_stack_frame().get_value(ident.as_str()) {
             value
         } else {
             panic!("Unknown identifier '{}'", ident)
