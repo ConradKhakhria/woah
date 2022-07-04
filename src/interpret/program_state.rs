@@ -181,7 +181,7 @@ impl<'m> ProgramState<'m> {
             None => None
         };
 
-        self.stack.last_mut().unwrap().add_value(value_name, &value);
+        self.get_stack_frame().add_value(value_name, &value);
     }
 
 
