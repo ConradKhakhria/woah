@@ -10,7 +10,7 @@ use std::rc::Rc;
 pub struct Function {
     pub name: String,
     pub args: Vec<Argument>,
-    pub return_type: Option<Rc<TypeKind>>,
+    pub return_type: Rc<TypeKind>,
     pub body: Vec<Statement>
 }
 
@@ -54,15 +54,15 @@ impl Function {
 
         let return_type = if tokens.len() > 3 {
             match TypeKind::from_tokens(&tokens[3..]) {
-                Ok(tp) => Some(tp.rc()),
+                Ok(tp) => tp.rc(),
     
                 Err(ref mut es) => {
                     errors.append(es);
-                    None
+                    TypeKind::NoReturnType.rc()
                 }
             }
         } else {
-            None
+            TypeKind::NoReturnType.rc()
         };
 
         /* Get function body */
@@ -111,11 +111,7 @@ impl Into<TypeKind> for &Function {
     
         TypeKind::Function {
             args,
-            return_type: if let Some(r) = &self.return_type {
-                Some(Rc::clone(r))
-            } else {
-                None
-            }
+            return_type: Rc::clone(&self.return_type)
         }
     }
 }
