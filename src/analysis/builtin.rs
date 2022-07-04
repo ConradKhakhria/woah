@@ -8,7 +8,7 @@ pub fn type_of_builtin_function(function_name: &str) -> Option<Rc<TypeKind>> {
         "println" => Some(Rc::new(
             TypeKind::Function {
                 args: vec![ TypeKind::Any.rc() ],
-                return_type: None
+                return_type: TypeKind::NoReturnType.rc()
             }
         )),
 
