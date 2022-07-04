@@ -5,7 +5,7 @@ use std::{
 };
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub (super) enum Value<'m> {
     Array(Vec<Rc<RefCell<Value<'m>>>>),
 
@@ -20,6 +20,39 @@ pub (super) enum Value<'m> {
     NoValue,
 
     String(String),
+}
+
+
+impl<'m> Clone for Value<'m> {
+    fn clone(&self) -> Self {
+        match self {
+            Value::Array(xs) => {
+                if xs.len() == 0 {
+                    return Value::Array(vec![]);
+                }
+
+                let mut values = vec![ xs[0].borrow().clone().rc_refcell(); xs.len() ];
+
+                for i in 1..xs.len() {
+                    values[i] = xs[i].borrow().clone().rc_refcell();
+                }
+
+                Value::Array(values)
+            },
+
+            Value::Bool(b) => Value::Bool(*b),
+
+            Value::Float(f) => Value::Float(*f),
+
+            Value::Function(f) => Value::Function(*f),
+
+            Value::Int(i) => Value::Int(*i),
+
+            Value::NoValue => Value::NoValue,
+
+            Value::String(s) => Value::String(s.clone())
+        }
+    }
 }
 
 
