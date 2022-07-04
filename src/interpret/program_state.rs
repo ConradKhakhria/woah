@@ -93,7 +93,11 @@ impl<'m> ProgramState<'m> {
         *     None
         */
 
+        self.get_stack_frame().add_scope();
+
         for stmt in block.into_iter() {
+            println!("{:?}", self.stack);
+
             match &stmt.stmt_type {
                 StatementType::Assign { assigned_to, new_value } => {
                     self.evaluate_assignment(assigned_to, new_value);
@@ -105,8 +109,13 @@ impl<'m> ProgramState<'m> {
     
                 StatementType::Conditional { cases, default } => {
                     if let Some(return_value) = self.evaluate_conditional(cases, default) {
+                        self.get_stack_frame().pop_scope();
                         return Some(return_value);
                     }
+                }
+
+                StatementType::IteratorForLoop { iterator_name, range, block } => {
+                    self.evaluate_ifl(iterator_name, range, block);
                 }
     
                 StatementType::RawExpr { expr } => {
@@ -114,6 +123,7 @@ impl<'m> ProgramState<'m> {
                 }
     
                 StatementType::Return { value } => {
+                    self.get_stack_frame().pop_scope();
                     return match value {
                         Some(e) => Some(self.evaluate_expr(e)),
                         None => Some(Value::NoValue.rc_refcell())
@@ -122,6 +132,7 @@ impl<'m> ProgramState<'m> {
 
                 StatementType::WhileLoop { condition, block } => {
                     if let Some(return_value) = self.evaluate_while_loop(condition, block) {
+                        self.get_stack_frame().pop_scope();
                         return Some(return_value);
                     }
                 }
@@ -130,6 +141,7 @@ impl<'m> ProgramState<'m> {
             }
         }
 
+        self.get_stack_frame().pop_scope();
         None
     }
 
@@ -182,6 +194,29 @@ impl<'m> ProgramState<'m> {
         };
 
         self.get_stack_frame().add_value(value_name, &value);
+    }
+
+
+    fn evaluate_ifl(&mut self, iterator: &String, range: &Expr, block: &'m Vec<Statement>) -> Option<Rc<RefCell<Value<'m>>>> {
+        /* Evaluates an iterator for loop */
+
+        if let Value::Array(ref xs) = *self.evaluate_expr(range).borrow() {
+            for x in xs.iter() {
+                self.get_stack_frame().add_value(iterator, &Some(Rc::clone(x)));
+
+                let ret_val = self.evaluate_block(block);
+
+                self.get_stack_frame().remove_value(iterator);
+
+                if let Some(rv) = ret_val {
+                    return Some(rv);
+                }
+            }
+        } else {
+            unreachable!()
+        }
+
+        None
     }
 
 
@@ -364,7 +399,7 @@ impl<'m> ProgramState<'m> {
 
         if let Some(func) = self.root_module.functions.get(ident) {
             Value::Function(func).rc_refcell()
-        } else if let Some(value) = self.stack.last().unwrap().get_value(ident) {
+        } else if let Some(value) = self.get_stack_frame().get_value(ident) {
             value
         } else {
             panic!("Unknown identifier '{}'", ident)
