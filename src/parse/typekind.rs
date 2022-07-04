@@ -18,7 +18,7 @@ pub enum TypeKind {
 
     Function {
         args: Vec<Rc<TypeKind>>,
-        return_type: Option<Rc<TypeKind>>
+        return_type: Rc<TypeKind>
     },
 
     HigherOrder {
@@ -33,6 +33,8 @@ pub enum TypeKind {
     Module(String),
 
     MutRef(Rc<TypeKind>),
+
+    NoReturnType,
 
     String
 }
@@ -78,13 +80,13 @@ impl TypeKind {
                 let mut return_type = match &rest[1..] {
                     [Token::Block { open_delim: "(", contents, .. }] => {
                         if contents.len() == 0 {
-                            Ok(None)
+                            Ok(TypeKind::NoReturnType)
                         } else {
-                            TypeKind::from_tokens(&rest[1..]).map(|t| Some(t.rc()))
+                            TypeKind::from_tokens(&rest[1..])
                         }
                     }
 
-                    _ => TypeKind::from_tokens(&rest[1..]).map(|t| Some(t.rc()))
+                    _ => TypeKind::from_tokens(&rest[1..])
                 };
 
                 if let Err(ref mut es) = return_type {
@@ -104,7 +106,7 @@ impl TypeKind {
                 if errors.is_empty() {
                     Ok(TypeKind::Function {
                         args: arg_types,
-                        return_type: return_type.unwrap()
+                        return_type: return_type.unwrap().rc()
                     })
                 } else {
                     Err(errors)
@@ -221,8 +223,13 @@ impl TypeKind {
 impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (TypeKind::NoReturnType, TypeKind::NoReturnType) => true,
+            (TypeKind::NoReturnType, _) => false,
+            (_, TypeKind::NoReturnType) => false,
+
             (TypeKind::Any, _) => true,
             (_, TypeKind::Any) => true,
+
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
             (TypeKind::Module(x), TypeKind::Module(y)) => x == y,
@@ -254,7 +261,7 @@ impl PartialEq for TypeKind {
 impl std::fmt::Display for TypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string: String = match self {
-            TypeKind::Any => "any".into(),
+            TypeKind::Any => "<any>".into(),
             TypeKind::Bool => "bool".into(),
             TypeKind::Char => "char".into(),
             TypeKind::Module(name) => format!("<Class '{}'>", name),
@@ -267,17 +274,7 @@ impl std::fmt::Display for TypeKind {
                     string = format!("{}{}, ", string, arg);
                 }
 
-                string = format!(
-                    "{} -> {}",
-                    &string[..string.len()-2],
-                    if let Some(tp) = return_type {
-                        tp.to_string()
-                    } else {
-                        String::from("()")
-                    }
-                );
-
-                string
+                format!("{} -> {}", &string[..string.len() - 2], return_type)
             },
             TypeKind::HigherOrder { name, args} => {
                 let mut string = String::from(name.to_string());
@@ -291,6 +288,7 @@ impl std::fmt::Display for TypeKind {
             TypeKind::Int => "int".into(),
             TypeKind::List(t) => format!("[]{}", t),
             TypeKind::MutRef(t) => format!("@{}", t),
+            TypeKind::NoReturnType => "<no return type>".into(),
             TypeKind::String => "str".into()
         };
 
