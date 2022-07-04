@@ -6,33 +6,33 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum TypeKind {
-    Int,
-
-    Float,
+    Bool,
 
     Char,
 
-    Module(String),
-
-    String,
-
-    Bool,
-
     EmptyList,
 
-    MutRef(Rc<TypeKind>),
+    Float,
 
-    List(Rc<TypeKind>),
+    Function {
+        args: Vec<Rc<TypeKind>>,
+        return_type: Option<Rc<TypeKind>>
+    },
 
     HigherOrder {
         name: String,
         args: Vec<Rc<TypeKind>>
     },
 
-    Function {
-        args: Vec<Rc<TypeKind>>,
-        return_type: Option<Rc<TypeKind>>
-    }
+    Int,
+
+    List(Rc<TypeKind>),
+
+    Module(String),
+
+    MutRef(Rc<TypeKind>),
+
+    String
 }
 
 
