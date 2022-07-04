@@ -221,7 +221,8 @@ impl TypeKind {
 impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TypeKind::Any, TypeKind::Any) => true,
+            (TypeKind::Any, _) => true,
+            (_, TypeKind::Any) => true,
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
             (TypeKind::Module(x), TypeKind::Module(y)) => x == y,
