@@ -6,6 +6,8 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum TypeKind {
+    Any, // This one is a placeholder for generics and
+         // only used in built-in functuons
     Bool,
 
     Char,
@@ -219,6 +221,7 @@ impl TypeKind {
 impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (TypeKind::Any, TypeKind::Any) => true,
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
             (TypeKind::Module(x), TypeKind::Module(y)) => x == y,
@@ -250,6 +253,7 @@ impl PartialEq for TypeKind {
 impl std::fmt::Display for TypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string: String = match self {
+            TypeKind::Any => "any".into(),
             TypeKind::Bool => "bool".into(),
             TypeKind::Char => "char".into(),
             TypeKind::Module(name) => format!("<Class '{}'>", name),
