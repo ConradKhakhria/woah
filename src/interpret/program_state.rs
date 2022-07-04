@@ -63,6 +63,16 @@ impl<'m> ProgramState<'m> {
     fn evaluate_function_call(&mut self, function: &'m Function, args: &Vec<Expr>) -> Option<Rc<RefCell<Value<'m>>>> {
         /* Evaluates a function with arguments and returns the result */
 
+        if function.name == "println" {
+            if args.len() == 1 {
+                println!("{}", self.evaluate_expr(&args[0]).borrow());
+            } else {
+                panic!("Function 'println' takes 1 argument exactly");
+            }
+
+            return Some(Value::NoValue.rc_refcell());
+        }
+
         let mut stack_frame = StackFrame::new();
 
         for (i, arg) in args.iter().enumerate() {
@@ -116,9 +126,22 @@ impl<'m> ProgramState<'m> {
                 StatementType::IteratorForLoop { iterator_name, range, block } => {
                     self.evaluate_ifl(iterator_name, range, block);
                 }
+
+                StatementType::RangeForLoop { iterator_name, start_value, end_value, step_value, block } => {
+
+                }
     
                 StatementType::RawExpr { expr } => {
-                    self.evaluate_expr(expr); // This is of course purely for the sake of side effects
+                    if let ExprKind::FunctionCall { function, args } = &expr.expr_kind {
+                        let function = match *self.evaluate_expr(function).borrow() {
+                            Value::Function(f) => f,
+                            _ => panic!("Expected function")
+                        };
+
+                        let _discard = self.evaluate_function_call(function, args);
+                    } else {
+                        self.evaluate_expr(expr); // This is of course purely for the sake of side effects
+                    }
                 }
     
                 StatementType::Return { value } => {
