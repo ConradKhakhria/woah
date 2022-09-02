@@ -106,6 +106,8 @@ impl<'m> ProgramState<'m> {
         self.get_stack_frame().add_scope();
 
         for stmt in block.into_iter() {
+            println!("{:?}", stmt);
+
             match &stmt.stmt_type {
                 StatementType::Assign { assigned_to, new_value } => {
                     self.evaluate_assignment(assigned_to, new_value);
@@ -128,7 +130,7 @@ impl<'m> ProgramState<'m> {
                 }
 
                 StatementType::RangeForLoop { iterator_name, start_value, end_value, step_value, block } => {
-
+                    self.evaluate_rfl(iterator_name, [start_value, end_value, step_value], block);
                 }
     
                 StatementType::RawExpr { expr } => {
@@ -241,6 +243,69 @@ impl<'m> ProgramState<'m> {
         } else {
             unreachable!()
         }
+
+        None
+    }
+
+
+    fn evaluate_rfl(&mut self, iterator: &String, dims: [&Expr; 3], block: &'m Vec<Statement>) -> Option<Rc<RefCell<Value<'m>>>> {
+        /* Evaluates a range for loop */
+
+        let start = self.evaluate_expr(&dims[0]);
+        let end = self.evaluate_expr(&dims[1]);
+        let step = self.evaluate_expr(&dims[2]);
+
+        self.get_stack_frame().add_value(iterator, &Some(Rc::clone(&start)));
+
+        'forLoop: loop {
+            match (&*start.borrow(), &*end.borrow()) {
+                (Value::Int(iterator), Value::Int(limit)) => {
+                    if iterator >= limit {
+                        break 'forLoop;
+                    }
+                }
+
+                (Value::Int(iterator), Value::Float(limit)) => {
+                    if *iterator as f64 >= *limit {
+                        break 'forLoop;
+                    }
+                }
+
+                (Value::Float(iterator), Value::Int(limit)) => {
+                    if *iterator >= *limit as f64 {
+                        break 'forLoop;
+                    }
+                }
+
+                (Value::Float(iterator), Value::Float(limit)) => {
+                    if iterator >= limit {
+                        break 'forLoop;
+                    }
+                }
+
+                _ => unreachable!()
+            }
+
+            if let Some(ret_val) = self.evaluate_block(block) {
+                self.get_stack_frame().remove_value(iterator);
+
+                return Some(ret_val);
+            }
+
+            let new_iterator_value =match (&*start.borrow(), &*step.borrow()) {
+                (Value::Int(iterator), Value::Int(increment)) => Value::Int(iterator + increment),
+
+                (Value::Float(iterator), Value::Int(limit)) => Value::Float(*iterator + *limit as f64),
+
+                (Value::Float(iterator), Value::Float(limit)) => Value::Float(iterator + limit),
+
+                _ => unreachable!()
+            };
+
+            *start.borrow_mut() = new_iterator_value;
+        }
+
+        self.get_stack_frame().remove_value(iterator);
 
         None
     }
