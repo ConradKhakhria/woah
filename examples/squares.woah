@@ -8,3 +8,6 @@ def main()
 
     for i in 0 : 6
         rs[i] = square(i)
+
+    println(xs)
+    println(rs)
