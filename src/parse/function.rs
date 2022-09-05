@@ -1,7 +1,7 @@
 use crate::{
     error::{ Error, ErrorKind },
     line::Line,
-    parse::{ parse_statement_block, Statement, TypeKind },
+    parse::{ parse_statement_block, parse_type_kind, Statement, TypeKind },
     token::Token
 };
 use std::rc::Rc;
@@ -57,7 +57,7 @@ impl<'s, 't> Function<'s, 't> {
         /* Get function return type */
 
         let return_type = if tokens.len() > 3 + offset {
-            match TypeKind::from_tokens(&tokens[3 + offset..]) {
+            match parse_type_kind(&tokens[3 + offset..]) {
                 Ok(tp) => Some(tp.rc()),
     
                 Err(ref mut es) => {
@@ -208,7 +208,7 @@ impl<'s, 't> Argument<'s, 't> {
                         .into();
         }
 
-        let arg_type = TypeKind::from_tokens(&tokens[2..])?.rc();
+        let arg_type = parse_type_kind(&tokens[2..])?.rc();
 
         Ok(Argument { arg_name, arg_type })
     }
