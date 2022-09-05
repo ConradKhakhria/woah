@@ -30,7 +30,7 @@ impl<'s, 't> Function<'s, 't> {
 
         let offset = if tokens[0].to_string() == "pub" { 1 } else { 0 };
 
-        if tokens.len() < 3 + offset || tokens[offset].to_string() != "def" || line.line_derivs.is_empty() {
+        if tokens.len() < 3 + offset || tokens[offset].to_string() != "fun" || line.line_derivs.is_empty() {
             errors.push(format_error.clone());
         }
 
@@ -38,8 +38,12 @@ impl<'s, 't> Function<'s, 't> {
 
         let name = &tokens[1 + offset];
 
-        if let Token::Identifier {..} = name {
-            // ok
+        if !name.lower_case() {
+            errors.push(
+                Error::new(ErrorKind::SyntaxError)
+                    .set_position(name.position())
+                    .set_message("function names must begin with a lower-case letter")
+            );
         } else if errors.len() == 0 {
             errors.push(format_error.clone());
         }
