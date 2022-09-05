@@ -2,7 +2,7 @@ use crate::{
     error::{ Error, ErrorKind },
     token::Token,
     line::Line,
-    parse::{ Expr, TypeKind }
+    parse::{ Expr, TypeKind, parse_type_kind }
 };
 use std::rc::Rc;
 
@@ -132,7 +132,7 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     }
 
     let value_type = if tokens[2].to_string() == ":" {
-        match TypeKind::from_tokens(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
+        match parse_type_kind(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
             Ok(tp) => Some(Rc::new(tp)),
             Err(ref mut es) => {
                 errors.append(es);
