@@ -54,6 +54,22 @@ impl<'s> Token<'s> {
     }
 
 
+    pub fn lower_case(&self) -> bool {
+        /* returns whether self begins with an lower case letter */
+
+        match self {
+            Token::Identifier { string, .. } => {
+                match string.chars().next() {
+                    Some('a'..='z') => true,
+                    _ => false
+                }
+            },
+
+            _ => false
+        }
+    }
+
+
     pub fn name(&self) -> String {
         /* returns the string of an ident or an empty string */
 
@@ -105,6 +121,22 @@ impl<'s> Token<'s> {
         }
 
         slices
+    }
+
+
+    pub fn upper_case(&self) -> bool {
+        /* returns whether self begins with an upper case letter */
+
+        match self {
+            Token::Identifier { string, .. } => {
+                match string.chars().next() {
+                    Some('A'..='Z') => true,
+                    _ => false
+                }
+            },
+
+            _ => false
+        }
     }
 }
 
