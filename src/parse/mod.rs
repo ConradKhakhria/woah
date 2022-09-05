@@ -21,3 +21,4 @@ pub use statement::StatementType as StatementType;
 pub use statement::parse_statement_block as parse_statement_block;
 
 pub use typekind::TypeKind as TypeKind;
+pub use typekind::parse_type_annotation as parse_type_kind;
