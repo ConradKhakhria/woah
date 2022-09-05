@@ -3,7 +3,8 @@ use crate::{
     line::Line,
     parse::{
         Function,
-        TypeKind
+        TypeKind,
+        parse_type_kind
     },
     token::Token,
 };
@@ -155,7 +156,7 @@ impl<'s, 't> Attribute<'s, 't> {
                             .set_message("Expected syntax <attribute name> : <attribute type>"));
         }
 
-        let attr_type = match TypeKind::from_tokens(&tokens[index + 2..]) {
+        let attr_type = match parse_type_kind(&tokens[index + 2..]) {
             Ok(tp) => tp.rc(),
             Err(ref mut es) => {
                 errors.append(es);
