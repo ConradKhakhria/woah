@@ -6,21 +6,22 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum TypeKind<'s, 't> {
-    Int,
-
-    Float,
-
-    Char,
-
-    Class(String),
-
-    String,
-
     Bool,
+    
+    Char,
+    
+    ClassName(String),
 
     EmptyList,
+    
+    Float,
 
-    MutRef(Rc<TypeKind<'s, 't>>),
+    Function {
+        args: Vec<Rc<TypeKind<'s, 't>>>,
+        return_type: Option<Rc<TypeKind<'s, 't>>>
+    },
+
+    Int,
 
     List(Rc<TypeKind<'s, 't>>),
 
@@ -29,187 +30,11 @@ pub enum TypeKind<'s, 't> {
         args: Vec<Rc<TypeKind<'s, 't>>>
     },
 
-    Function {
-        args: Vec<Rc<TypeKind<'s, 't>>>,
-        return_type: Option<Rc<TypeKind<'s, 't>>>
-    }
+    String,
 }
 
 
 impl<'s, 't> TypeKind<'s, 't> {
-    /* Initialisation */
-
-    fn parse_head_block_type(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
-        /* Parses a type which begins with a bracketed block */
-
-        match tokens {
-            [Token::Block { open_delim: "[", contents, .. }, rest @ .. ] => {
-                if rest.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
-                        .set_position(tokens[0].position())
-                        .set_message("Unrecognised type '[]'")
-                        .into()
-                } else if !contents.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
-                        .set_position(contents[0].position())
-                        .set_message("List types must have the syntax []<type>")
-                        .into()
-                } else {
-                    Ok(TypeKind::List(Rc::new(
-                        Self::from_tokens(rest)?
-                    )))
-                }
-            },
-
-            [Token::Block { open_delim: "(", contents, .. }] => {
-                if contents.is_empty() {
-                    Error::new(ErrorKind::SyntaxError)
-                            .set_position(tokens[0].position())
-                            .set_message("unrecognised type '()'")
-                            .into()   
-                } else {
-                    TypeKind::from_tokens(&contents[..])
-                }
-            },
-        
-            [Token::Block { open_delim: "(", contents, .. }, rest @ .. ] => {
-                let mut errors = vec![];
-
-                let mut return_type = match &rest[1..] {
-                    [Token::Block { open_delim: "(", contents, .. }] => {
-                        if contents.len() == 0 {
-                            Ok(None)
-                        } else {
-                            TypeKind::from_tokens(&rest[1..]).map(|t| Some(Rc::new(t)))
-                        }
-                    }
-
-                    _ => TypeKind::from_tokens(&rest[1..]).map(|t| Some(Rc::new(t)))
-                };
-
-                if let Err(ref mut es) = return_type {
-                    errors.append(es);
-                }
-
-                let arg_type_slice = Token::split_tokens(&contents[..], |t| t.to_string() == ",");
-                let mut arg_types = vec![];
-
-                for (start, end) in arg_type_slice {
-                    match TypeKind::from_tokens(&contents[start..end]) {
-                        Ok(tp) => arg_types.push(Rc::new(tp)),
-                        Err(ref mut es) => errors.append(es)
-                    }
-                }
-
-                if errors.is_empty() {
-                    Ok(TypeKind::Function {
-                        args: arg_types,
-                        return_type: return_type.unwrap()
-                    })
-                } else {
-                    Err(errors)
-                }
-            }
-        
-            _ => Error::new(ErrorKind::SyntaxError)
-                        .set_position(tokens[0].position())
-                        .set_message("unrecognised syntax in type annotation")
-                        .into()
-        }
-    }
-
-
-    fn parse_head_identifier_type(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
-        /* Parses a type whose first token is an identifier */
-
-        let head_name = tokens[0].to_string();
-        let builtin_result = match head_name.as_str() {
-            "int"   => Ok(TypeKind::Int),
-            "float" => Ok(TypeKind::Float),
-            "char"  => Ok(TypeKind::Char),
-            "str"   => Ok(TypeKind::String),
-            "bool"  => Ok(TypeKind::Bool),
-            _       => Err(vec![])
-        };
-
-        if let Ok(_) = &builtin_result {
-            return if tokens.len() == 1 {
-                builtin_result
-            } else {
-                 Error::new(ErrorKind::TypeError)
-                        .set_position(tokens[0].position())
-                        .set_message(format!("Type '{}' cannot have parameters", tokens[0].to_string()))
-                        .into()
-            }
-        }
-
-        let mut type_parameters = vec![];
-        let mut errors = vec![];
-
-        for i in 1..tokens.len() {
-            match Self::from_tokens(&tokens[i..=i]) {
-                Ok(tp) => type_parameters.push(Rc::new(tp)),
-                Err(ref mut es) => errors.append(es)
-            }
-        }
-
-        if errors.is_empty() {
-            Ok(TypeKind::HigherOrder {
-                name: &tokens[0],
-                args: type_parameters
-            })
-        } else {
-            Err(errors)
-        }
-    }
-    
-
-    fn parse_head_symbol_type(symbol: &str, tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
-        /* Parses a type whose first token is a symbol */
-
-        if symbol == "@" {
-            Ok(TypeKind::MutRef(
-                Rc::new(TypeKind::from_tokens(&tokens[1..])?)
-            ))
-        } else {
-            Error::new(ErrorKind::SyntaxError)
-                .set_position(tokens[0].position())
-                .set_message("Unrecognised syntax in type annotation")
-                .into()
-        }
-    }
-
-
-    pub fn from_tokens(tokens: &'t [Token<'s>]) -> Result<Self, Vec<Error>> {
-        /* Parses a type */
-
-        match tokens {
-            [Token::Identifier { .. }, ..] => {
-                Self::parse_head_identifier_type(tokens)
-            }
-
-            [Token::Block { open_delim: "(", contents, ..}] => {
-                TypeKind::from_tokens(&contents[..])
-            },
-
-            [Token::Block {..}, .. ] => {
-                TypeKind::parse_head_block_type(tokens)
-            }
-
-            [Token::Symbol { string, .. }, ..] => {
-                Self::parse_head_symbol_type(string, tokens)
-            }
-
-            _ => Error::new(ErrorKind::SyntaxError)
-                    .set_position(tokens[0].position())
-                    .set_message("Unrecognised syntax in type annotation")
-                    .into()
-        }
-    }
-
-
-    /* Utils */
-
     pub fn rc(self) -> Rc<TypeKind<'s, 't>> {
         /* Wraps self in an Rc<> */
 
@@ -223,12 +48,11 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
         match (self, other) {
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
-            (TypeKind::Class(x), TypeKind::Class(y)) => x == y,
+            (TypeKind::ClassName(x), TypeKind::ClassName(y)) => x == y,
             (TypeKind::Float, TypeKind::Float) => true,
             (TypeKind::Int, TypeKind::Int) => true,
             (TypeKind::EmptyList, TypeKind::EmptyList) => true,
             (TypeKind::List(a), TypeKind::List(b)) => *a == *b,
-            (TypeKind::MutRef(a), TypeKind::MutRef(b)) => *a == *b,
             (TypeKind::HigherOrder { name: n1, args: a1 },
              TypeKind::HigherOrder { name: n2, args: a2 }) => {
                 if n1.to_string() == n2.to_string() && a1.len() == a2.len()  {
@@ -254,7 +78,7 @@ impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
         let string: String = match self {
             TypeKind::Bool => "bool".into(),
             TypeKind::Char => "char".into(),
-            TypeKind::Class(name) => format!("<Class '{}'>", name),
+            TypeKind::ClassName(name) => format!("<Class '{}'>", name),
             TypeKind::EmptyList => "<empty list>".into(),
             TypeKind::Float => "float".into(),
             TypeKind::Function { args, return_type } => {
@@ -287,10 +111,60 @@ impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
             },
             TypeKind::Int => "int".into(),
             TypeKind::List(t) => format!("[]{}", t),
-            TypeKind::MutRef(t) => format!("@{}", t),
             TypeKind::String => "str".into()
         };
 
         write!(f, "{}", string)
+    }
+}
+
+
+pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind<'s, 't>, Vec<Error>> {
+    /* Parses a type kind */
+
+    match tokens {
+        [] => Error::new(ErrorKind::SyntaxError).set_message("empty type annotation").into(),
+
+        [Token::Identifier { string, .. }] => {
+            match *string {
+                "bool"  => Ok(TypeKind::Bool),
+                "char"  => Ok(TypeKind::Char),
+                "float" => Ok(TypeKind::Float),
+                "int"   => Ok(TypeKind::Int),
+                "str"   => Ok(TypeKind::String),
+                _       => Ok(TypeKind::HigherOrder { name: &tokens[0], args: vec![] })
+            }
+        },
+
+        [Token::Block { open_delim: "[", contents, .. }] => {
+            Ok(TypeKind::List(parse_type_annotation(contents)?.rc()))
+        },
+
+        [Token::Block { open_delim: "(", contents, .. }] => {
+            parse_type_annotation(&contents)
+        }
+
+        _ => {
+            if tokens.len() == 3 && tokens[0].name() == "fun" {
+                Error::new(ErrorKind::UnimplementedError)
+                    .set_position(tokens[0].position())
+                    .set_message("function parameters have not yet been implemented")
+                    .into()
+            } else if let Token::Identifier { .. } = &tokens[0] {
+                let name = &tokens[0];
+                let mut args = vec![];
+
+                for i in 1..tokens.len() {
+                    args.push(parse_type_annotation(&tokens[i..=i])?.rc());
+                }
+
+                Ok(TypeKind::HigherOrder { name, args })
+            } else {
+                Error::new(ErrorKind::SyntaxError)
+                    .set_position(tokens[0].position())
+                    .set_message("unrecognised syntax in type annotation")
+                    .into()
+            }
+        }
     }
 }
