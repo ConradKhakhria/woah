@@ -79,7 +79,7 @@ impl<'s> Token<'s> {
             Token::Number     { position, .. } => *position,
             Token::String     { position, .. } => *position,
             Token::Symbol     { position, .. } => *position,
-            Token::NewlineIndent(_)                          => (0, 0) // irrelevant as these will be removed
+            Token::NewlineIndent(_)                          => (1, 1) // irrelevant as these will be removed
         }
     }
 
