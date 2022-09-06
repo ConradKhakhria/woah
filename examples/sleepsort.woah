@@ -1,6 +1,6 @@
 mod Main
-    def sort(xs: []int) []int
-        var results: []int = []
+    fun sort(xs: [int]) [int] =
+        var results: [int] = []
 
         pool for x in xs
             waitms(x)
@@ -9,7 +9,7 @@ mod Main
         return results
 
 
-    def main(env: Env)
+    fun main(env: Env) =
         let xs = [6, 7, 1, 4, 2, 3, 4, 9]
         let sorted = SleepSort.sort(xs)
 

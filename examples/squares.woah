@@ -1,5 +1,5 @@
 mod Main
-    def main(env: Env)
+    fun main(env: Env) =
         for i in [1, 2, 3, 4, 5]
             env.println(i)
 
