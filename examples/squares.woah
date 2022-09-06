@@ -1,6 +1,6 @@
 mod Main
-    fun main(env: Env) =
+    fun main() =
         for i in [1, 2, 3, 4, 5]
-            env.println(i)
+            println(i)
 
-        env.println("done")
+        println("done")
