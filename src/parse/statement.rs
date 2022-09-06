@@ -13,6 +13,12 @@ pub enum StatementType<'s, 't> {
         new_value: Expr<'s, 't>,
     },
 
+    Conditional {
+        condition: Expr<'s, 't>,
+        block: Vec<Statement<'s, 't>>,
+        is_if: bool
+    },
+
     Declare {
         value_name: &'t Token<'s>,
         value_type: Option<Rc<TypeKind<'s, 't>>>,
@@ -20,33 +26,27 @@ pub enum StatementType<'s, 't> {
         constant: bool
     },
 
-    Conditional {
-        condition: Expr<'s, 't>,
-        block: Vec<Statement<'s, 't>>,
-        is_if: bool
-    },
-
     Else {
         block: Vec<Statement<'s, 't>>
     },
 
-    WhileLoop {
-        condition: Expr<'s, 't>,
-        block: Vec<Statement<'s, 't>>
-    },
-
-    ForLoop {
+    IteratorForLoop {
         iterator_name: &'t Token<'s>,
         range: Expr<'s, 't>,
         block: Vec<Statement<'s, 't>>
+    },
+
+    RawExpr {
+        expr: Expr<'s, 't>
     },
 
     Return {
         value: Option<Expr<'s, 't>>
     },
 
-    RawExpr {
-        expr: Expr<'s, 't>
+    WhileLoop {
+        condition: Expr<'s, 't>,
+        block: Vec<Statement<'s, 't>>
     }
 }
 
@@ -171,8 +171,6 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 
 fn parse_assignment<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     /* Parses a value assignment */
-
-//    println!("{:#?}", line);
 
     let tokens = line.line_tokens;
 
@@ -356,7 +354,7 @@ fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     if errors.is_empty() {
         Some(Ok(
             Statement {
-                stmt_type: StatementType::ForLoop {
+                stmt_type: StatementType::IteratorForLoop {
                     iterator_name,
                     range: range.unwrap(),
                     block: block.unwrap()
