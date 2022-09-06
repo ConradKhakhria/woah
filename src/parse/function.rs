@@ -12,7 +12,7 @@ pub struct Function<'s, 't> {
     pub variable_object_method: Option<bool>,
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
-    pub return_type: Rc<TypeKind<'s, 't>>,
+    pub return_type: Rc<TypeKind>,
     pub body: Vec<Statement<'s, 't>>
 }
 
@@ -201,8 +201,8 @@ impl<'s, 't> Function<'s, 't> {
     }
 }
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for Function<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
+    fn into(self) -> TypeKind {
         let mut args = vec![];
 
         for arg in self.args.iter() {
@@ -217,8 +217,8 @@ impl<'s, 't> Into<TypeKind<'s, 't>> for Function<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for &Function<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
+    fn into(self) -> TypeKind {
         let mut args = vec![];
 
         for arg in self.args.iter() {
@@ -239,7 +239,7 @@ impl<'s, 't> Into<TypeKind<'s, 't>> for &Function<'s, 't> {
 #[derive(Debug)]
 pub struct Argument<'s, 't> {
     pub arg_name: &'t Token<'s>,
-    pub arg_type: Rc<TypeKind<'s, 't>>,
+    pub arg_type: Rc<TypeKind>,
     pub arg_mutable: bool
 }
 

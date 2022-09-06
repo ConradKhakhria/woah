@@ -9,20 +9,20 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum StatementType<'s, 't> {
     Assign {
-        assigned_to: Expr<'s, 't>,
-        new_value: Expr<'s, 't>,
+        assigned_to: Expr,
+        new_value: Expr,
     },
 
     Conditional {
-        condition: Expr<'s, 't>,
+        condition: Expr,
         block: Vec<Statement<'s, 't>>,
         is_if: bool
     },
 
     Declare {
         value_name: &'t Token<'s>,
-        value_type: Option<Rc<TypeKind<'s, 't>>>,
-        value: Option<Expr<'s, 't>>,
+        value_type: Option<Rc<TypeKind>>,
+        value: Option<Expr>,
         constant: bool
     },
 
@@ -32,20 +32,20 @@ pub enum StatementType<'s, 't> {
 
     IteratorForLoop {
         iterator_name: &'t Token<'s>,
-        range: Expr<'s, 't>,
+        range: Expr,
         block: Vec<Statement<'s, 't>>
     },
 
     RawExpr {
-        expr: Expr<'s, 't>
+        expr: Expr
     },
 
     Return {
-        value: Option<Expr<'s, 't>>
+        value: Option<Expr>
     },
 
     WhileLoop {
-        condition: Expr<'s, 't>,
+        condition: Expr,
         block: Vec<Statement<'s, 't>>
     }
 }

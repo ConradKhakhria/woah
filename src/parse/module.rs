@@ -18,7 +18,7 @@ use std::{
 enum AssociatedType<'s, 't> {
     Class {
         class: Class<'s, 't>,
-        class_type: TypeKind<'s, 't>
+        class_type: TypeKind
     },
 
     None

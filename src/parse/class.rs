@@ -18,7 +18,7 @@ use std::{
 #[derive(Debug, Getters)]
 pub struct Class<'s, 't> {
     name: &'t Token<'s>,
-    attributes: HashMap<String, Attribute<'s, 't>>,
+    attributes: HashMap<String, Attribute>,
 }
 
 
@@ -92,20 +92,20 @@ impl<'s, 't> Class<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for Class<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for Class<'s, 't> {
+    fn into(self) -> TypeKind {
         TypeKind::HigherOrder {
-            name: self.name,
+            name: self.name.to_string(),
             args: vec![]
         }
     }
 }
 
 
-impl<'s, 't> Into<TypeKind<'s, 't>> for &Class<'s, 't> {
-    fn into(self) -> TypeKind<'s, 't> {
+impl<'s, 't> Into<TypeKind> for &Class<'s, 't> {
+    fn into(self) -> TypeKind {
         TypeKind::HigherOrder {
-            name: self.name,
+            name: self.name.to_string(),
             args: vec![]
         }
     }
@@ -123,15 +123,15 @@ impl<'s, 't> Into<TypeKind<'s, 't>> for &Class<'s, 't> {
 
 
 #[derive(Debug, Getters)]
-pub struct Attribute<'s, 't> {
+pub struct Attribute {
     public: bool,
     attr_name: String,
-    attr_type: Rc<TypeKind<'s, 't>>
+    attr_type: Rc<TypeKind>
 }
 
 
-impl<'s, 't> Attribute<'s, 't> {
-    fn from_line(line: &Line<'s, 't>) -> Result<Self, Vec<Error>> {
+impl Attribute {
+    fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
         /* Attempts ot parse an attribute from a line */
 
         let tokens = line.line_tokens;
