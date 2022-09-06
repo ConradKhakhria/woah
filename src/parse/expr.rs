@@ -65,8 +65,16 @@ impl Expr {
                     .set_message("Received empty expression")
                     .into();
         }
+
+        let parse_options = [
+            parse_atomic_expression,
+            parse_compound,
+            parse_funcall,
+            parse_indexing,
+            parse_attr_res
+        ];
     
-        for option in PARSE_OPTIONS {
+        for option in parse_options {
             if let Some(expr) = option(tokens) {
                 return expr;
             }
@@ -377,14 +385,3 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
         }
     ))
 }
-
-
-// For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
-// as a function variable
-const PARSE_OPTIONS: [for<'s, 't> fn(&'t [Token<'s>]) -> Option<Result<Expr, Vec<Error>>>; 5] = [
-    parse_atomic_expression,
-    parse_compound,
-    parse_funcall,
-    parse_indexing,
-    parse_attr_res
-];
