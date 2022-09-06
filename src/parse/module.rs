@@ -24,8 +24,8 @@ enum AssociatedType<'s, 't> {
 pub struct Module<'s, 't> {
     file_scope: Vec<OsString>,
     associated_type: AssociatedType<'s, 't>,
-    module_methods: Vec<Function<'s, 't>>,
-    instance_methods: Vec<Function<'s, 't>>
+    module_methods: Vec<Function>,
+    instance_methods: Vec<Function>
 }
 
 

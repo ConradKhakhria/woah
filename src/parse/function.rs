@@ -9,28 +9,28 @@ use std::rc::Rc;
 
 
 #[derive(Debug)]
-pub struct Function<'s, 't> {
+pub struct Function {
     pub public: bool,
     pub variable_object_method: Option<bool>,
-    pub name: &'t Token<'s>,
-    pub args: Vec<Argument<'s, 't>>,
+    pub name: String,
+    pub args: Vec<Argument>,
     pub return_type: Rc<TypeKind>,
     pub body: Vec<Statement>
 }
 
 
-impl<'s, 't> Function<'s, 't> {
+impl Function {
 
     /* Parse function */
 
-    pub fn parse_function(line: &Line<'s, 't>) -> Result<Function<'s, 't>, Vec<Error>> {
+    pub fn parse_function(line: &Line) -> Result<Function, Vec<Error>> {
         /* Parses a function from a line */
 
         // Function filled with default values to be modified
         let mut func = Function {
             public: false,
             variable_object_method: None,
-            name: &line.line_tokens[0],
+            name: String::new(),
             args: vec![],
             return_type: TypeKind::NoneType.rc(),
             body: vec![]
@@ -60,7 +60,7 @@ impl<'s, 't> Function<'s, 't> {
     }
 
 
-    fn parse_function_args(&mut self, args_tokens: &'t Vec<Token<'s>>) -> Result<(), Vec<Error>> {
+    fn parse_function_args(&mut self, args_tokens: &Vec<Token>) -> Result<(), Vec<Error>> {
        /* Parses a list of function arguments
         *
         * returns
@@ -102,7 +102,7 @@ impl<'s, 't> Function<'s, 't> {
     }
  
 
-    fn parse_function_declaration(&mut self, tokens: &'t [Token<'s>]) -> Result<Option<usize>, Vec<Error>> {
+    fn parse_function_declaration(&mut self, tokens: &[Token]) -> Result<Option<usize>, Vec<Error>> {
        /* Parses the opening line of a function
         *
         * returns: a result of
@@ -140,7 +140,7 @@ impl<'s, 't> Function<'s, 't> {
 
         // get function name
         if tokens[index].lower_case() {
-            self.name = &tokens[index];
+            self.name = tokens[index].to_string();
         } else {
             errors.push(
                 Error::new(ErrorKind::SyntaxError)
@@ -203,7 +203,7 @@ impl<'s, 't> Function<'s, 't> {
     }
 }
 
-impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
+impl Into<TypeKind> for Function {
     fn into(self) -> TypeKind {
         let mut args = vec![];
 
@@ -219,7 +219,7 @@ impl<'s, 't> Into<TypeKind> for Function<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
+impl Into<TypeKind> for &Function {
     fn into(self) -> TypeKind {
         let mut args = vec![];
 
@@ -239,15 +239,15 @@ impl<'s, 't> Into<TypeKind> for &Function<'s, 't> {
 
 
 #[derive(Debug)]
-pub struct Argument<'s, 't> {
-    pub arg_name: &'t Token<'s>,
+pub struct Argument {
+    pub arg_name: String,
     pub arg_type: Rc<TypeKind>,
     pub arg_mutable: bool
 }
 
 
-impl<'s, 't> Argument<'s, 't> {
-    fn from_tokens(tokens: &'t [Token<'s>], pos: (usize, usize)) -> Result<Argument<'s, 't>, Vec<Error>> {
+impl Argument {
+    fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Argument, Vec<Error>> {
         /* Parses an argument */
 
         if tokens.is_empty() {
@@ -276,12 +276,12 @@ impl<'s, 't> Argument<'s, 't> {
 
         // arg name
         let arg_name = if tokens[index].lower_case() {
-            &tokens[index]
+            tokens[index].to_string()
         } else {
             return Error::new(ErrorKind::SyntaxError)
                         .set_position(tokens[index].position())
                         .set_message("expected (lower-case) name for function argument")
-                        .into()
+                        .into();
         };
 
         index += 1;
