@@ -153,7 +153,7 @@ pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind
             let name = &tokens[0];
             let mut args = vec![];
 
-            for (start, end) in Token::split_tokens(contents, |t| t.name() == ",") {
+            for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
                 args.push(parse_type_annotation(&contents[start..end])?.rc());
             }
 
@@ -161,7 +161,7 @@ pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind
         }
 
         [kwd_fun, Token::Block { open_delim: "(", contents, ..}, ret_xs @ ..] => {
-            if kwd_fun.name() != "fun" {
+            if kwd_fun.to_string() != "fun" {
                 return Error::new(ErrorKind::SyntaxError)
                         .set_position(tokens[0].position())
                         .set_message("unrecognised syntax in type annotation")
@@ -175,7 +175,7 @@ pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind
                 parse_type_annotation(ret_xs)?.rc()
             };
 
-            for (start, end) in Token::split_tokens(contents, |t| t.name() == ",") {
+            for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
                 args.push(parse_type_annotation(&contents[start..end])?.rc());
             }
 
