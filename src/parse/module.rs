@@ -10,9 +10,9 @@ use std::ffi::OsString;
 use std::path::Path;
 
 
-enum AssociatedType<'s, 't> {
+enum AssociatedType {
     Class {
-        class: Class<'s, 't>,
+        class: Class,
         class_type: TypeKind
     },
 
@@ -21,19 +21,19 @@ enum AssociatedType<'s, 't> {
 
 
 #[derive(Getters)]
-pub struct Module<'s, 't> {
+pub struct Module {
     file_scope: Vec<OsString>,
-    associated_type: AssociatedType<'s, 't>,
+    associated_type: AssociatedType,
     module_methods: Vec<Function>,
     instance_methods: Vec<Function>
 }
 
 
-impl<'s, 't> Module<'s, 't> {
+impl Module {
     /* Instantiation */
 
 
-    fn parse_import(line: &Line<'s, 't>) -> Result<(), Vec<Error>> {
+    fn parse_import(line: &Line) -> Result<(), Vec<Error>> {
         /* Parses a module import */
 
         Error::new(ErrorKind::UnimplementedError)
@@ -43,14 +43,14 @@ impl<'s, 't> Module<'s, 't> {
     }
 
 
-    fn parse_mod_block(module: &mut Module<'s, 't>, line: &Line<'s, 't>) -> Vec<Error> {
+    fn parse_mod_block(module: &mut Module, line: &Line) -> Vec<Error> {
         /* Parses a mod block into module */
 
         unimplemented!();
     }
 
 
-    pub fn from_tokens(filepath: &Path, tokens: &'t [Token<'s>]) -> Result<Module<'s, 't>, Vec<Error>> {
+    pub fn from_tokens(filepath: &Path, tokens: &[Token]) -> Result<Module, Vec<Error>> {
         /* Reads a module from a file */
 
         let lines = create_lines(&tokens);

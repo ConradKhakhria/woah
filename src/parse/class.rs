@@ -11,25 +11,26 @@ use std::string::ToString;
 
 
 #[derive(Debug, Getters)]
-pub struct Class<'s, 't> {
-    name: &'t Token<'s>,
+pub struct Class {
+    name: String,
     attributes: HashMap<String, Attribute>,
 }
 
 
-impl<'s, 't> Class<'s, 't> {
+impl Class {
+
     /* Initialisation */
 
-    fn get_class_name(line: &Line<'s, 't>) -> Result<&'t Token<'s>, Vec<Error>> {
+    fn get_class_name(line: &Line) -> Result<String, Vec<Error>> {
         /* Determintes and checks the name of a class */
 
         match &line.line_tokens[1] {
-            t @ Token::Identifier { string, .. } => {
+            Token::Identifier { string, position } => {
                 if ('A'..'Z').contains(&string.chars().next().unwrap()) {
-                    Ok(t)
+                    Ok(string.to_string())
                 } else {
                     Error::new(ErrorKind::SyntaxError)
-                        .set_position(t.position())
+                        .set_position(*position)
                         .set_message("Class names must begin with an upper-case character")
                         .into()
                 }
@@ -43,7 +44,7 @@ impl<'s, 't> Class<'s, 't> {
     }
 
 
-    pub fn new(line: &Line<'s, 't>) -> Result<Class<'s, 't>, Vec<Error>> {
+    pub fn new(line: &Line) -> Result<Class, Vec<Error>> {
         /* Parses a class from a nested Line */
 
         let tokens = line.line_tokens;
@@ -87,7 +88,7 @@ impl<'s, 't> Class<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind> for Class<'s, 't> {
+impl Into<TypeKind> for Class {
     fn into(self) -> TypeKind {
         TypeKind::HigherOrder {
             name: self.name.to_string(),
@@ -97,7 +98,7 @@ impl<'s, 't> Into<TypeKind> for Class<'s, 't> {
 }
 
 
-impl<'s, 't> Into<TypeKind> for &Class<'s, 't> {
+impl Into<TypeKind> for &Class {
     fn into(self) -> TypeKind {
         TypeKind::HigherOrder {
             name: self.name.to_string(),
