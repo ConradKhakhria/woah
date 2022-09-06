@@ -1,0 +1,34 @@
+use std.math
+
+
+obj Complex[t]
+    real: t
+    imag: t
+
+
+mod Complex[t: Num]
+    pub fun Complex(var self, real: t, imag: t) =
+        # constructor
+        self.real = real
+        self.imag = imag
+
+    pub fun getReal(self) t = self.real
+
+    pub fun getImag(self) t = self.imag
+
+    pub fun add(self, other: Complex[t]) Complex[t] =
+        Complex(self.real + other.real, self.imag + other.imag)
+
+    pub fun sub(self, other: Complex[t]) Complex[t] =
+        Complex(self.real - other.real, self.imag - other.imag)
+
+    pub fun mul(self, other: Complex[t]) Complex[t] =
+        let realComp = self.real * other.real - self.imag * other.imag
+        let imagComp = self.imag * other.real - self.real * other.imag
+
+        Complex(realComp, imagComp)
+
+    pub fun abs(self) t = math.sqrt(self.real**2 + self.imag**2)
+
+    pub fun conjugate(self) Complex[t] = Complex(self.real, -self.imag)
+
