@@ -1,8 +1,10 @@
 use crate::error::*;
 use crate::line::Line;
 use crate::parse::Expr;
+use crate::parse::ExprKind;
 use crate::parse::parse_type_kind;
 use crate::parse::TypeKind;
+use crate::token::Token;
 use std::rc::Rc;
 
 
@@ -33,6 +35,14 @@ pub enum StatementType {
     IteratorForLoop {
         iterator_name: String,
         range: Expr,
+        block: Vec<Statement>
+    },
+
+    NumericRangeForLoop {
+        iterator_name: String,
+        start: Expr,
+        end: Expr,
+        step: Expr,
         block: Vec<Statement>
     },
 
@@ -360,8 +370,7 @@ fn parse_for_loop(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
         String::new()
     };
 
-
-    let mut range = Expr::from_tokens(&tokens[3..], tokens[3].position());
+    let mut range = parse_for_loop_range(&tokens[3..]);
 
     /* For loop body */
 
@@ -377,20 +386,82 @@ fn parse_for_loop(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
         errors.append(es);
     }
 
-    if errors.is_empty() {
+    if !errors.is_empty() {
+        return Some(Err(errors));
+    } else {
         Some(Ok(
             Statement {
-                stmt_type: StatementType::IteratorForLoop {
-                    iterator_name,
-                    range: range.unwrap(),
-                    block: block.unwrap()
+                stmt_type: match range.unwrap() {
+                    Ok([start, end, step]) => {
+                        StatementType::NumericRangeForLoop {
+                            iterator_name,
+                            start,
+                            end,
+                            step,
+                            block: block.unwrap()
+                        }
+                    },
+
+                    Err(range) => {
+                        StatementType::IteratorForLoop {
+                            iterator_name,
+                            range,
+                            block: block.unwrap()
+                        }
+                    }
                 },
                 first_position: tokens[0].position(),
-                last_position: tokens[2].position()
+                last_position: tokens.last().unwrap().position()
             }
         ))
-    } else {
-        Some(Err(errors))
+    }
+}
+
+
+fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec<Error>> {
+   /* Parses the range of a for loop
+    *
+    * returns:
+    * - Ok(Ok([start, end, step])) for numeric range for loops
+    * - Ok(Err(range)) for iterator for loops
+    * - Err(es) for errors
+    */
+
+    match Token::split_tokens(tokens, |t| t.to_string() == ":").as_slice() {
+        [_] => {
+            match Expr::from_tokens(tokens, tokens[0].position()) {
+                Ok(range) => Ok(Err(range)),
+                Err(es) => Err(es)
+            }
+        },
+
+        [start, end] => {
+            let start = Expr::from_tokens(&tokens[start.0..start.1], tokens[0].position())?;
+            let end = Expr::from_tokens(&tokens[end.0..end.1], tokens[0].position())?;
+            let step = Expr {
+                expr_kind: ExprKind::Integer(1),
+                expr_type: Some(TypeKind::Int.rc()),
+                first_position: tokens[0].position(),
+                last_position: tokens[0].position()
+            };
+
+            Ok(Ok([start, end, step]))
+        },
+
+        [start, end, step] => {
+            let start = Expr::from_tokens(&tokens[start.0..start.1], tokens[0].position())?;
+            let end = Expr::from_tokens(&tokens[end.0..end.1], tokens[0].position())?;
+            let step = Expr::from_tokens(&tokens[step.0..step.1], tokens[0].position())?;
+
+            Ok(Ok([start, end, step]))
+        },
+
+        _ => {
+            Error::new(ErrorKind::SyntaxError)
+                .set_position(tokens[0].position())
+                .set_message("unrecognised syntax in for loop")
+                .into()
+        }
     }
 }
 
