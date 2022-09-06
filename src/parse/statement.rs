@@ -3,7 +3,6 @@ use crate::line::Line;
 use crate::parse::Expr;
 use crate::parse::parse_type_kind;
 use crate::parse::TypeKind;
-use crate::token::Token;
 use std::rc::Rc;
 
 
@@ -125,11 +124,6 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
                 .set_message("expected a (lower-case) variable name")
         );
         String::new()
-    };
-
-    let value_name = match &tokens[1] {
-        Token::Identifier { string, .. } => string.to_string(),
-        _ => return None
     };
 
     let mut assign_index = None;
