@@ -15,7 +15,7 @@ pub struct Function<'s, 't> {
     pub name: &'t Token<'s>,
     pub args: Vec<Argument<'s, 't>>,
     pub return_type: Rc<TypeKind>,
-    pub body: Vec<Statement<'s, 't>>
+    pub body: Vec<Statement>
 }
 
 

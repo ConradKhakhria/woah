@@ -3,11 +3,12 @@ use crate::line::Line;
 use crate::parse::Expr;
 use crate::parse::parse_type_kind;
 use crate::parse::TypeKind;
+use crate::token::Token;
 use std::rc::Rc;
 
 
 #[derive(Debug)]
-pub enum StatementType<'s, 't> {
+pub enum StatementType {
     Assign {
         assigned_to: Expr,
         new_value: Expr,
@@ -15,25 +16,25 @@ pub enum StatementType<'s, 't> {
 
     Conditional {
         condition: Expr,
-        block: Vec<Statement<'s, 't>>,
+        block: Vec<Statement>,
         is_if: bool
     },
 
     Declare {
-        value_name: &'t Token<'s>,
+        value_name: String,
         value_type: Option<Rc<TypeKind>>,
         value: Option<Expr>,
         constant: bool
     },
 
     Else {
-        block: Vec<Statement<'s, 't>>
+        block: Vec<Statement>
     },
 
     IteratorForLoop {
-        iterator_name: &'t Token<'s>,
+        iterator_name: String,
         range: Expr,
-        block: Vec<Statement<'s, 't>>
+        block: Vec<Statement>
     },
 
     RawExpr {
@@ -46,23 +47,33 @@ pub enum StatementType<'s, 't> {
 
     WhileLoop {
         condition: Expr,
-        block: Vec<Statement<'s, 't>>
+        block: Vec<Statement>
     }
 }
 
 #[derive(Debug)]
-pub struct Statement<'s, 't> {
-    pub stmt_type: StatementType<'s, 't>,
-    pub first_token: &'t Token<'s>,
-    pub last_token: &'t Token<'s>
+pub struct Statement {
+    pub stmt_type: StatementType,
+    pub first_position: (usize, usize),
+    pub last_position: (usize, usize)
 }
 
 
-impl<'s, 't> Statement<'s, 't> {
-    pub fn from_line(line: &Line<'s, 't>) -> Result<Self, Vec<Error>> {
+impl Statement {
+    pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
         /* Creates a statement from a list of tokens */
+
+        let parse_options = [
+            parse_declare,
+            parse_conditional,
+            parse_else,
+            parse_for_loop,
+            parse_return,
+            parse_assignment,
+            parse_expr
+        ];
     
-        for option in PARSE_OPTIONS {
+        for option in parse_options {
             if let Some(res) = option(line) {
                 return res;
             }
@@ -78,10 +89,8 @@ impl<'s, 't> Statement<'s, 't> {
 
 /* Parsing */
 
-type ParseOption<'s, 't> = Option<Result<Statement<'s, 't>, Vec<Error>>>;
 
-
-fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses a value declaration */
 
     let tokens = line.line_tokens;
@@ -105,13 +114,25 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                 .into());
     }
 
+    let mut errors = Vec::new();
+
+    let value_name = if tokens[1].lower_case() {
+        tokens[1].to_string()
+    } else {
+        errors.push(
+            Error::new(ErrorKind::SyntaxError)
+                .set_position(tokens[1].position())
+                .set_message("expected a (lower-case) variable name")
+        );
+        String::new()
+    };
+
     let value_name = match &tokens[1] {
-        tok@Token::Identifier { .. } => tok,
+        Token::Identifier { string, .. } => string.to_string(),
         _ => return None
     };
 
     let mut assign_index = None;
-    let mut errors = Vec::new();
 
     for i in 0..tokens.len() {
         if tokens[i].to_string() == "=" {
@@ -160,8 +181,8 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     Some(if errors.is_empty() {
         Ok(Statement {
             stmt_type: StatementType::Declare { value_name, value_type, value, constant },
-            first_token: &tokens[0],
-            last_token: tokens.last().unwrap()
+            first_position: tokens[0].position(),
+            last_position: tokens.last().unwrap().position()
         })
     } else {
         Err(errors)
@@ -169,7 +190,7 @@ fn parse_declare<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_assignment<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_assignment(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses a value assignment */
 
     let tokens = line.line_tokens;
@@ -211,8 +232,8 @@ fn parse_assignment<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                 assigned_to: assigned_to.unwrap(),
                 new_value: new_value.unwrap()
             },
-            first_token: tokens.first().unwrap(),
-            last_token: tokens.last().unwrap()
+            first_position: tokens.first().unwrap().position(),
+            last_position: tokens.last().unwrap().position()
         })
     } else {
         Err(errors)
@@ -220,7 +241,7 @@ fn parse_assignment<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_conditional<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_conditional(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses an if/elif/while stmt */
 
     let tokens = line.line_tokens;
@@ -257,8 +278,8 @@ fn parse_conditional<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                 condition: condition.unwrap(),
                 block: block.unwrap()
             },
-            first_token: &tokens[0],
-            last_token: &tokens[2]
+            first_position: tokens[0].position(),
+            last_position: tokens[2].position()
         })
     } else {
         Ok(Statement {
@@ -267,14 +288,14 @@ fn parse_conditional<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                 block: block.unwrap(),
                 is_if: conditional_type == "if"
             },
-            first_token: &tokens[0],
-            last_token:  line.line_derivs.last().unwrap().line_tokens.last().unwrap() // vile
+            first_position: tokens[0].position(),
+            last_position: line.line_derivs.last().unwrap().line_tokens.last().unwrap().position() // vile
         })
     })
 }
 
 
-fn parse_else<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_else(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses an else statement */
 
     let tokens = line.line_tokens;
@@ -298,8 +319,8 @@ fn parse_else<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     Some(match parse_statement_block(&line.line_derivs) {
         Ok(block) => Ok(Statement {
             stmt_type: StatementType::Else { block },
-            first_token: &tokens[0],
-            last_token:  line.line_derivs.last().unwrap().line_tokens.last().unwrap()
+            first_position: tokens[0].position(),
+            last_position: line.line_derivs.last().unwrap().line_tokens.last().unwrap().position()
         }),
 
         Err(es) => Err(es)
@@ -307,7 +328,7 @@ fn parse_else<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_for_loop(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses a for loop */
 
     let tokens = line.line_tokens;
@@ -334,7 +355,18 @@ fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
         errors.push(format_err);
     }
 
-    let iterator_name = &tokens[1];
+    let iterator_name = if tokens[1].lower_case() {
+        tokens[1].to_string()
+    } else {
+        errors.push(
+            Error::new(ErrorKind::SyntaxError)
+                .set_position(tokens[1].position())
+                .set_message("expected (lower-case) name for for loop iterator")
+        );
+        String::new()
+    };
+
+
     let mut range = Expr::from_tokens(&tokens[3..], tokens[3].position());
 
     /* For loop body */
@@ -359,8 +391,8 @@ fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
                     range: range.unwrap(),
                     block: block.unwrap()
                 },
-                first_token: &tokens[0],
-                last_token:  &tokens[2]
+                first_position: tokens[0].position(),
+                last_position: tokens[2].position()
             }
         ))
     } else {
@@ -369,7 +401,7 @@ fn parse_for_loop<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 }
 
 
-fn parse_return<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_return(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses a return value */
 
     let tokens = line.line_tokens;
@@ -395,13 +427,13 @@ fn parse_return<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
 
     Some(Ok(Statement {
         stmt_type: StatementType::Return { value },
-        first_token: &tokens[0],
-        last_token: tokens.last().unwrap()
+        first_position: tokens[0].position(),
+        last_position: tokens.last().unwrap().position()
     }))
 }
 
 
-fn parse_expr<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
+fn parse_expr(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     /* Parses a raw expression statement */
 
     let tokens = line.line_tokens;
@@ -416,27 +448,15 @@ fn parse_expr<'s, 't>(line: &Line<'s, 't>) -> ParseOption<'s, 't> {
     Some(match Expr::from_tokens(tokens, tokens[0].position()) {
         Ok(expr) => Ok(Statement {
             stmt_type: StatementType::RawExpr { expr },
-            first_token: &tokens[0],
-            last_token: tokens.last().unwrap()
+            first_position: tokens[0].position(),
+            last_position: tokens.last().unwrap().position()
         }),
         Err(es) => Err(es)
     })
 }
 
 
-// For some reason, rust doesn't like having a list of func ptrs with lifetimes attached to them
-// as a function variable
-const PARSE_OPTIONS: [for<'s, 't> fn(&Line<'s, 't>) -> Option<Result<Statement<'s, 't>, Vec<Error>>>; 7] = [
-    parse_declare,
-    parse_conditional,
-    parse_else,
-    parse_for_loop,
-    parse_return,
-    parse_assignment,
-    parse_expr
-];
-
-pub fn parse_statement_block<'s, 't>(lines: &[Line<'s, 't>]) -> Result<Vec<Statement<'s, 't>>, Vec<Error>> {
+pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error>> {
     /* Parses a block of statements */
 
     let mut statements = vec![];
