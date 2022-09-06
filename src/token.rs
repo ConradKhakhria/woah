@@ -71,11 +71,10 @@ impl<'s> Token<'s> {
 
 
     pub fn name(&self) -> String {
-        /* returns the string of an ident/symbol or an empty string */
+        /* returns the string of an ident or an empty string */
 
         match self {
             Token::Identifier { string, .. } => string.to_string(),
-            Token::Symbol { string, .. } => string.to_string(),
             _ => String::new()
         }
     }
