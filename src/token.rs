@@ -70,16 +70,6 @@ impl<'s> Token<'s> {
     }
 
 
-    pub fn name(&self) -> String {
-        /* returns the string of an ident or an empty string */
-
-        match self {
-            Token::Identifier { string, .. } => string.to_string(),
-            _ => String::new()
-        }
-    }
-
-
     pub fn position(&self) -> (usize, usize) {
         /* Returns the token's position */
 
