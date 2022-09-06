@@ -5,7 +5,7 @@ use crate::{
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub enum TypeKind<'s, 't> {
+pub enum TypeKind {
     Bool,
     
     Char,
@@ -17,17 +17,17 @@ pub enum TypeKind<'s, 't> {
     Float,
 
     Function {
-        args: Vec<Rc<TypeKind<'s, 't>>>,
-        return_type: Rc<TypeKind<'s, 't>>
+        args: Vec<Rc<TypeKind>>,
+        return_type: Rc<TypeKind>
     },
 
     Int,
 
-    List(Rc<TypeKind<'s, 't>>),
+    List(Rc<TypeKind>),
 
     HigherOrder {
-        name: &'t Token<'s>,
-        args: Vec<Rc<TypeKind<'s, 't>>>
+        name: String,
+        args: Vec<Rc<TypeKind>>
     },
 
     NoneType,
@@ -36,8 +36,8 @@ pub enum TypeKind<'s, 't> {
 }
 
 
-impl<'s, 't> TypeKind<'s, 't> {
-    pub fn rc(self) -> Rc<TypeKind<'s, 't>> {
+impl TypeKind {
+    pub fn rc(self) -> Rc<TypeKind> {
         /* Wraps self in an Rc<> */
 
         Rc::new(self)
@@ -45,7 +45,7 @@ impl<'s, 't> TypeKind<'s, 't> {
 }
 
 
-impl<'s, 't> PartialEq for TypeKind<'s, 't> {
+impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TypeKind::Bool, TypeKind::Bool) => true,
@@ -77,7 +77,7 @@ impl<'s, 't> PartialEq for TypeKind<'s, 't> {
 }
 
 
-impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
+impl std::fmt::Display for TypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string: String = match self {
             TypeKind::Bool => "bool".into(),
@@ -124,7 +124,7 @@ impl<'s, 't> std::fmt::Display for TypeKind<'s, 't> {
 }
 
 
-pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind<'s, 't>, Vec<Error>> {
+pub fn parse_type_annotation(tokens: &[Token]) -> Result<TypeKind, Vec<Error>> {
     /* Parses a type kind */
 
     match tokens {
@@ -137,7 +137,7 @@ pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind
                 "float" => Ok(TypeKind::Float),
                 "int"   => Ok(TypeKind::Int),
                 "str"   => Ok(TypeKind::String),
-                _       => Ok(TypeKind::HigherOrder { name: &tokens[0], args: vec![] })
+                n       => Ok(TypeKind::HigherOrder { name: n.to_string(), args: vec![] })
             }
         },
 
@@ -150,7 +150,15 @@ pub fn parse_type_annotation<'s, 't>(tokens: &'t [Token<'s>]) -> Result<TypeKind
         }
 
         [Token::Identifier {..}, Token::Block { open_delim: "[", contents, .. }] => {
-            let name = &tokens[0];
+            let name = if tokens[0].upper_case() {
+                tokens[0].to_string()
+            } else {
+                return Error::new(ErrorKind::SyntaxError)
+                            .set_position(tokens[0].position())
+                            .set_message("expected (upper-case) name in higher-order type")
+                            .into()
+            };
+
             let mut args = vec![];
 
             for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
