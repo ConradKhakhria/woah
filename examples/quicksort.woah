@@ -3,8 +3,8 @@ mod Main
         if xs.len() < 2
             return xs
 
-        var lowers = []
-        var uppers = []
+        var lowers: [int] = []
+        var uppers: [int] = []
 
         for x in xs
             if x < xs[0]
