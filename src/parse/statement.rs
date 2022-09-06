@@ -459,7 +459,7 @@ fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec
         _ => {
             Error::new(ErrorKind::SyntaxError)
                 .set_position(tokens[0].position())
-                .set_message("unrecognised syntax in for loop")
+                .set_message("unrecognised syntax in for loop (too many colons)")
                 .into()
         }
     }
