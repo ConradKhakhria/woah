@@ -1,7 +1,5 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    token::Token
-};
+use crate::error::*;
+use crate::token::Token;
 use std::rc::Rc;
 
 #[derive(Debug)]

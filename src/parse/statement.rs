@@ -1,10 +1,10 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    token::Token,
-    line::Line,
-    parse::{ Expr, TypeKind, parse_type_kind }
-};
+use crate::error::*;
+use crate::line::Line;
+use crate::parse::Expr;
+use crate::parse::parse_type_kind;
+use crate::parse::TypeKind;
 use std::rc::Rc;
+
 
 #[derive(Debug)]
 pub enum StatementType<'s, 't> {

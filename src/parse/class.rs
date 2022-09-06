@@ -1,19 +1,14 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    line::Line,
-    parse::{
-        Function,
-        TypeKind,
-        parse_type_kind
-    },
-    token::Token,
-};
+use crate::error::*;
+use crate::line::Line;
+use crate::parse::Function;
+use crate::parse::parse_type_kind;
+use crate::parse::TypeKind;
+use crate::token::Token;
 use derive_getters::Getters;
-use std::{
-    collections::HashMap,
-    rc::Rc,
-    string::ToString
-};
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::string::ToString;
+
 
 #[derive(Debug, Getters)]
 pub struct Class<'s, 't> {

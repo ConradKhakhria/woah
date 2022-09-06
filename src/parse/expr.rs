@@ -1,8 +1,6 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    parse::TypeKind,
-    token::Token
-};
+use crate::error::*;
+use crate::parse::TypeKind;
+use crate::token::Token;
 use std::rc::Rc;
 
 #[derive(Debug)]

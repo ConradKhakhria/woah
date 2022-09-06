@@ -1,4 +1,4 @@
-use crate::error::{ Error, ErrorKind };
+use crate::error::*;
 use lazy_static::lazy_static;
 use regex::Regex;
 

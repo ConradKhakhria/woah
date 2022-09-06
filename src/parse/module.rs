@@ -1,18 +1,13 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    line::{ create_lines, Line },
-    parse::{
-        Class,
-        Function,
-        TypeKind
-    },
-    token::Token
-};
+use crate::error::*;
+use crate::line::create_lines;
+use crate::line::Line;
+use crate::parse::Class;
+use crate::parse::Function;
+use crate::parse::TypeKind;
+use crate::token::Token;
 use derive_getters::Getters;
-use std::{
-    ffi::OsString,
-    path::Path
-};
+use std::ffi::OsString;
+use std::path::Path;
 
 
 enum AssociatedType<'s, 't> {

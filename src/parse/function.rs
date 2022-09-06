@@ -1,10 +1,12 @@
-use crate::{
-    error::{ Error, ErrorKind },
-    line::Line,
-    parse::{ parse_statement_block, parse_type_kind, Statement, TypeKind },
-    token::Token
-};
+use crate::error::*;
+use crate::line::Line;
+use crate::parse::parse_statement_block;
+use crate::parse::parse_type_kind;
+use crate::parse::Statement;
+use crate::parse::TypeKind;
+use crate::token::Token;
 use std::rc::Rc;
+
 
 #[derive(Debug)]
 pub struct Function<'s, 't> {
