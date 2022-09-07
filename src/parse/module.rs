@@ -33,15 +33,21 @@ impl Module {
                             .expect("Liszp - fatal: could not convert filepath to string");
         let source = std::fs::read_to_string(filepath)
                             .expect(format!("Liszp - fatal: could not open file '{}'", filename).as_str());
-        let tokens = tokenise(&source, filename, (1, 1))?;
-        let lines = create_lines(tokens.as_slice());
 
-        Self::from_lines(&lines, filepath)
+        Self::from_source(&source, filepath)
     }
 
 
-    pub fn from_lines(lines: &Vec<Line>, filepath: &Path) -> Result<Module, Vec<Error>> {
+    pub fn from_source(source: &String, filepath: &Path) -> Result<Module, Vec<Error>> {
         /* Reads a module from a source string */
+
+        let filename = filepath.to_str().unwrap().to_string();
+        let mut errors = vec![];
+
+        // get lines
+        let raw_lines: Vec<String> = source.split("\n").map(|s| s.to_string()).collect();
+        let tokens = tokenise(source, &filename, (1, 1))?;
+        let lines = create_lines(tokens.as_slice());
 
         let mut module = Module {
             instance_methods: vec![],
@@ -51,14 +57,10 @@ impl Module {
             module_type: ModuleType::None
         };
 
-        // read source
-        let filename = filepath.to_str().unwrap().to_string();
-        let mut errors = vec![];
-
         module.create_module_path(filepath, &filename)?;
 
         // parse lines
-        for line in lines {
+        for line in lines.iter() {
             let es = match line.line_tokens[0].to_string().as_str() {
                 "enum" => module.parse_enum(line),
                 "mod"  => module.parse_module_block(line),
@@ -71,7 +73,7 @@ impl Module {
             };
 
             for e in es {
-                errors.push(e.set_filename(&filename));
+                errors.push(e.set_filename(&filename).set_line(&raw_lines));
             }
         }
 
@@ -126,9 +128,6 @@ impl Module {
         }
 
         if line.line_tokens[1].to_string().to_lowercase() != self.module_path.last().unwrap().to_lowercase() {
-            println!("'{}'", line.line_tokens[1].to_string().to_lowercase());
-            println!("'{}'", self.module_path.last().unwrap().to_lowercase());
-
             return Error::new(ErrorKind::SyntaxError)
                         .set_position(line.first_position())
                         .set_message("the module name must be the same as the filename")
@@ -167,7 +166,6 @@ impl Module {
                 Some(s) => {
                     if s.ends_with(extension) {
                         let string = s[..s.len() - extension_length - 1].to_string();
-                        println!("{}", string);
 
                         self.module_path.push(string.clone());
                         self.module_name = string;
