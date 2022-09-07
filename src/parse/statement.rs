@@ -157,7 +157,7 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     }
 
     let value_type = if tokens[2].to_string() == ":" {
-        match parse_type_kind(&tokens[3..assign_index.unwrap_or(tokens.len())]) {
+        match parse_type_kind(&tokens[3..assign_index.unwrap_or(tokens.len())], tokens[3].position()) {
             Ok(tp) => Some(Rc::new(tp)),
             Err(ref mut es) => {
                 errors.append(es);

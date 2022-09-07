@@ -122,11 +122,16 @@ impl std::fmt::Display for TypeKind {
 }
 
 
-pub fn parse_type_annotation(tokens: &[Token]) -> Result<TypeKind, Vec<Error>> {
+pub fn parse_type_annotation(tokens: &[Token], pos: (usize, usize)) -> Result<TypeKind, Vec<Error>> {
     /* Parses a type kind */
 
     match tokens {
-        [] => Error::new(ErrorKind::SyntaxError).set_message("empty type annotation").into(),
+        [] => {
+            Error::new(ErrorKind::SyntaxError)
+                .set_message("empty type annotation")
+                .set_position(pos)
+                .into()
+        },
 
         [Token::Identifier { string, .. }] => {
             match *string {
@@ -140,11 +145,11 @@ pub fn parse_type_annotation(tokens: &[Token]) -> Result<TypeKind, Vec<Error>> {
         },
 
         [Token::Block { open_delim: "[", contents, .. }] => {
-            Ok(TypeKind::List(parse_type_annotation(contents)?.rc()))
+            Ok(TypeKind::List(parse_type_annotation(contents, pos)?.rc()))
         },
 
         [Token::Block { open_delim: "(", contents, .. }] => {
-            parse_type_annotation(&contents)
+            parse_type_annotation(&contents, pos)
         }
 
         [Token::Identifier {..}, Token::Block { open_delim: "[", contents, .. }] => {
@@ -160,7 +165,7 @@ pub fn parse_type_annotation(tokens: &[Token]) -> Result<TypeKind, Vec<Error>> {
             let mut args = vec![];
 
             for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
-                args.push(parse_type_annotation(&contents[start..end])?.rc());
+                args.push(parse_type_annotation(&contents[start..end], pos)?.rc());
             }
 
             Ok(TypeKind::HigherOrder { name, args })
@@ -178,11 +183,11 @@ pub fn parse_type_annotation(tokens: &[Token]) -> Result<TypeKind, Vec<Error>> {
             let return_type = if ret_xs.is_empty() {
                 TypeKind::NoneType.rc()
             } else {
-                parse_type_annotation(ret_xs)?.rc()
+                parse_type_annotation(ret_xs, pos)?.rc()
             };
 
             for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
-                args.push(parse_type_annotation(&contents[start..end])?.rc());
+                args.push(parse_type_annotation(&contents[start..end], pos)?.rc());
             }
 
             Ok(TypeKind::Function { args, return_type })

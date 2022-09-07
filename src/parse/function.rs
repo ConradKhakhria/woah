@@ -187,7 +187,7 @@ impl Function {
         }
 
         if index < tokens.len() {
-            match parse_type_kind(&tokens[index..equals_index]) {
+            match parse_type_kind(&tokens[index..equals_index], tokens[index].position()) {
                 Ok(tp) => self.return_type = tp.rc(),
                 Err(ref mut es) => errors.append(es)
             }
@@ -298,7 +298,7 @@ impl Argument {
         Ok(Argument {
             arg_name,
             arg_mutable,
-            arg_type: parse_type_kind(&tokens[index..])?.rc()
+            arg_type: parse_type_kind(&tokens[index..], tokens[index].position())?.rc()
         })
     }
 }
