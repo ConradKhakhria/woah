@@ -11,7 +11,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct Function {
     pub public: bool,
-    pub variable_object_method: Option<bool>,
+    pub variable_instance_method: Option<bool>,
     pub name: String,
     pub args: Vec<Argument>,
     pub return_type: Rc<TypeKind>,
@@ -29,7 +29,7 @@ impl Function {
         // Function filled with default values to be modified
         let mut func = Function {
             public: false,
-            variable_object_method: None,
+            variable_instance_method: None,
             name: String::new(),
             args: vec![],
             return_type: TypeKind::NoneType.rc(),
@@ -80,10 +80,10 @@ impl Function {
         for (start, end) in args_slices {
             if start == 0 {
                 if end == 1 && args_tokens[0].to_string() == "self" {
-                    self.variable_object_method = Some(false);
+                    self.variable_instance_method = Some(false);
                     continue;
                 } else if end == 2 && args_tokens[0].to_string() == "var" && args_tokens[1].to_string() == "self" {
-                    self.variable_object_method = Some(true);
+                    self.variable_instance_method = Some(true);
                     continue;
                 }
             }
