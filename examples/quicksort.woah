@@ -1,4 +1,4 @@
-mod Main
+mod Quicksort
     fun quicksort(xs: [int]) [int] =
         if xs.len() < 2
             return xs
