@@ -1,12 +1,8 @@
-mod class;
 mod expr;
 mod function;
 mod module;
 mod statement;
 mod typekind;
-
-pub use class::Attribute as Attribute;
-pub use class::Class as Class;
 
 pub use expr::Expr as Expr;
 pub use expr::ExprKind as ExprKind;
