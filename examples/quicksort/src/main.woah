@@ -1,0 +1,2 @@
+mod Main
+    fun main() = std.io.println(quicksort([9, 5, 7, 3, 5, 1, 10]))

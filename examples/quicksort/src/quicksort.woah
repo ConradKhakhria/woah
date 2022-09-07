@@ -13,6 +13,3 @@ mod Quicksort
                 uppers.push(x)
 
         quicksort(lowers).append(quicksort(uppers))
-
-
-    fun main() = std.io.println(quicksort([9, 5, 7, 3, 5, 1, 10]))
