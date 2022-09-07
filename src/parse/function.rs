@@ -186,7 +186,9 @@ impl Function {
             }
         }
 
-        if index < tokens.len() {
+        if index == equals_index {
+            self.return_type = TypeKind::NoneType.rc();
+        } else if index < tokens.len() {
             match parse_type_kind(&tokens[index..equals_index], tokens[index].position()) {
                 Ok(tp) => self.return_type = tp.rc(),
                 Err(ref mut es) => errors.append(es)
