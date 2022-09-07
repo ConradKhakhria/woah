@@ -7,6 +7,25 @@ pub struct Line<'s, 't> {
 }
 
 
+impl<'s, 't> Line<'s, 't> {
+    pub fn first_position(&self) -> (usize, usize) {
+        /* Gets the position of the first token in the line */
+
+        self.line_tokens.first().unwrap().position()
+    }
+
+
+    pub fn last_position(&self) -> (usize, usize) {
+        /* Gets the position of the last token in the line */
+
+        match self.line_derivs.last() {
+            Some(last_deriv) => last_deriv.last_position(),
+            None => self.line_tokens.last().unwrap().position()
+        }
+    }
+}
+
+
 fn create_indentation_tuples<'s, 't>(tokens: &'t [Token<'s>]) -> Vec<(&'t [Token<'s>], usize)> {
     /* Creates a list of (line, indent) tuples */
 
