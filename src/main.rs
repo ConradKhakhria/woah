@@ -1,14 +1,20 @@
+mod compile;
 mod error;
-mod interface;
 mod line;
 mod parse;
 mod token;
 
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
 
-    let res = match args[1].as_str() {
-        "build" => interface::build(&args),
+fn main() {
+    let mut compiler = compile::Compiler::new();
+    let command = std::env::args().nth(1);
+
+    if command.is_none() {
+        panic!("Liszp: please supply a command");
+    }
+
+    let res = match command.unwrap().as_str() {
+        "build" => compiler.build(),
         c => panic!("Liszp: unknown command '{}'", c)
     };
 
