@@ -18,7 +18,7 @@ pub struct Module {
     module_methods: Vec<Function>,
     module_name: String,
     module_path: Vec<String>,
-    module_type: ModuleType
+    _module_type: ModuleType
 }
 
 
@@ -54,7 +54,7 @@ impl Module {
             module_methods: vec![],
             module_name: String::new(),
             module_path: vec![],
-            module_type: ModuleType::None
+            _module_type: ModuleType::None
         };
 
         module.create_module_path(filepath, &filename)?;
