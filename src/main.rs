@@ -1,3 +1,4 @@
+mod analysis;
 mod error;
 mod interface;
 mod line;
