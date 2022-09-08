@@ -1,12 +1,12 @@
-mod compile;
 mod error;
+mod interface;
 mod line;
 mod parse;
 mod token;
 
 
 fn main() {
-    let mut compiler = compile::Compiler::new();
+    let mut interface = interface::Interface::new();
     let command = std::env::args().nth(1);
 
     if command.is_none() {
@@ -14,7 +14,7 @@ fn main() {
     }
 
     let res = match command.unwrap().as_str() {
-        "build" => compiler.build(),
+        "build" => interface.build(),
         c => panic!("Liszp: unknown command '{}'", c)
     };
 

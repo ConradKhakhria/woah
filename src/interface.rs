@@ -4,14 +4,14 @@ use std::collections::HashMap;
 use std::path::Path;
 
 
-pub struct Compiler {
+pub struct Interface {
     modules: HashMap<String, Module>
 }
 
 
-impl Compiler {
+impl Interface {
     pub fn new() -> Self {
-        Compiler { modules: HashMap::new() }
+        Interface { modules: HashMap::new() }
     }
 
 
@@ -63,8 +63,4 @@ impl Compiler {
 
         Ok(())
     }
-
-
-    /* Compile */
-
 }
