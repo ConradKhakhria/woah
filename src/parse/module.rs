@@ -4,6 +4,7 @@ use crate::line::Line;
 use crate::parse::Function;
 use crate::token::tokenise;
 use derive_getters::Getters;
+use std::collections::HashMap;
 use std::path::Path;
 
 
@@ -14,8 +15,8 @@ pub enum ModuleType {
 
 #[derive(Getters)]
 pub struct Module {
-    instance_methods: Vec<Function>,
-    module_methods: Vec<Function>,
+    instance_methods: HashMap<String, Function>,
+    module_methods: HashMap<String, Function>,
     module_name: String,
     module_path: Vec<String>,
     _module_type: ModuleType
@@ -50,8 +51,8 @@ impl Module {
         let lines = create_lines(tokens.as_slice());
 
         let mut module = Module {
-            instance_methods: vec![],
-            module_methods: vec![],
+            instance_methods: HashMap::new(),
+            module_methods: HashMap::new(),
             module_name: String::new(),
             module_path: vec![],
             _module_type: ModuleType::None
@@ -139,10 +140,24 @@ impl Module {
         for line in line.line_derivs.iter() {
             match Function::parse_function(line) {
                 Ok(f) => {
-                    if f.variable_instance_method.is_some() {
-                        self.instance_methods.push(f);
+                    let method_category = if f.variable_instance_method.is_some() {
+                        &mut self.instance_methods
                     } else {
-                        self.module_methods.push(f);
+                        &mut self.module_methods
+                    };
+
+                    if method_category.contains_key(&f.name) {
+                        errors.push(
+                            Error::new(ErrorKind::NameError)
+                                .set_position(f.first_position())
+                                .set_message(format!(
+                                    "method '{}' for module '{}' defined twice",
+                                    f.name,
+                                    self.module_name()
+                                ))
+                        );
+                    } else {
+                        method_category.insert(f.name.clone(), f);
                     }
                 }
 

@@ -15,11 +15,27 @@ pub struct Function {
     pub name: String,
     pub args: Vec<Argument>,
     pub return_type: Rc<TypeKind>,
-    pub body: Vec<Statement>
+    pub body: Vec<Statement>,
+    pub positions: [(usize, usize); 2],
 }
 
 
 impl Function {
+
+    /* Utils */
+
+    pub fn first_position(&self) -> (usize, usize) {
+        /* Gets the first position of the function */
+
+        self.positions[0].clone()
+    }
+
+
+    pub fn last_position(&self) -> (usize, usize) {
+        /* Gets the last position of the function */
+
+        self.positions[1].clone()
+    }
 
     /* Parse function */
 
@@ -33,7 +49,8 @@ impl Function {
             name: String::new(),
             args: vec![],
             return_type: TypeKind::NoneType.rc(),
-            body: vec![]
+            body: vec![],
+            positions: [ line.first_position(), line.last_position() ]
         };
 
         match func.parse_function_declaration(line.line_tokens)? {
