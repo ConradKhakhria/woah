@@ -7,7 +7,7 @@ use derive_getters::Getters;
 use std::path::Path;
 
 
-enum ModuleType {
+pub enum ModuleType {
     None
 }
 
