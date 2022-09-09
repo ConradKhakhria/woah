@@ -214,7 +214,7 @@ impl Module {
         self.positions[0].clone()
     }
 
-
+    #[allow(dead_code)]
     pub fn last_position(&self) -> (usize, usize) {
         /* Gets the last position of a module */
 
