@@ -58,7 +58,16 @@ impl Interface {
         } else {
             let module = Module::from_filepath(module_cursor)?;
 
-            self.modules.insert(module.module_name().clone(), module);
+            if self.modules.contains_key(module.module_name()) {
+                errors.push(
+                    Error::new(ErrorKind::NameError)
+                        .set_position(module.first_position())
+                        .set_line(module.raw_lines())
+                        .set_message(format!("two modules in this path named '{}'", module.module_name()))
+                );
+            } else {
+                self.modules.insert(module.module_name().clone(), module);
+            }
         }
 
         Ok(())

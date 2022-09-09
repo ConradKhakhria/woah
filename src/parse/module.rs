@@ -19,7 +19,9 @@ pub struct Module {
     module_methods: HashMap<String, Function>,
     module_name: String,
     module_path: Vec<String>,
-    _module_type: ModuleType
+    _module_type: ModuleType,
+    positions: [(usize, usize); 2],
+    raw_lines: Vec<String>
 }
 
 
@@ -46,7 +48,6 @@ impl Module {
         let mut errors = vec![];
 
         // get lines
-        let raw_lines: Vec<String> = source.split("\n").map(|s| s.to_string()).collect();
         let tokens = tokenise(source, &filename, (1, 1))?;
         let lines = create_lines(tokens.as_slice());
 
@@ -55,7 +56,12 @@ impl Module {
             module_methods: HashMap::new(),
             module_name: String::new(),
             module_path: vec![],
-            _module_type: ModuleType::None
+            _module_type: ModuleType::None,
+            positions: [
+                lines.first().unwrap().first_position(),
+                lines.last().unwrap().last_position()
+            ],
+            raw_lines: source.split("\n").map(|s| s.to_string()).collect()
         };
 
         module.create_module_path(filepath, &filename)?;
@@ -74,7 +80,7 @@ impl Module {
             };
 
             for e in es {
-                errors.push(e.set_filename(&filename).set_line(&raw_lines));
+                errors.push(e.set_filename(&filename).set_line(&module.raw_lines));
             }
         }
 
@@ -199,5 +205,19 @@ impl Module {
         }
 
         Ok(())
+    }
+
+
+    pub fn first_position(&self) -> (usize, usize) {
+        /* Gets the first position of a module */
+
+        self.positions[0].clone()
+    }
+
+
+    pub fn last_position(&self) -> (usize, usize) {
+        /* Gets the last position of a module */
+
+        self.positions[1].clone()
     }
 }
