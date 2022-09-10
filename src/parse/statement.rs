@@ -24,7 +24,7 @@ pub enum StatementType {
     Declare {
         value_name: String,
         value_type: Option<Rc<TypeKind>>,
-        value: Option<Expr>,
+        value: Expr,
         constant: bool
     },
 
@@ -136,28 +136,23 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
         String::new()
     };
 
-    let mut assign_index = None;
+    let mut assign_index = 0;
 
-    for i in 0..tokens.len() {
+    for i in 2..tokens.len() {
         if tokens[i].to_string() == "=" {
-            match assign_index {
-                None => {
-                    assign_index = Some(i);
-                    break;
-                },
-    
-                Some(_) => {
-                    return Some(Error::new(ErrorKind::SyntaxError)
-                                    .set_position(tokens[i].position())
-                                    .set_message("Found 2 assignments in declaration")
-                                    .into())
-                }
+            if assign_index == 0 {
+                return Some(Error::new(ErrorKind::SyntaxError)
+                        .set_position(tokens[i].position())
+                        .set_message("Found 2 assignments in declaration")
+                        .into())
+            } else {
+                assign_index = i;
             }
         }
     }
 
     let value_type = if tokens[2].to_string() == ":" {
-        match parse_type_kind(&tokens[3..assign_index.unwrap_or(tokens.len())], tokens[3].position()) {
+        match parse_type_kind(&tokens[3..assign_index], tokens[3].position()) {
             Ok(tp) => Some(Rc::new(tp)),
             Err(ref mut es) => {
                 errors.append(es);
@@ -168,23 +163,18 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
         None
     };
 
-    let value = match assign_index {
-        Some(i) => {
-            match Expr::from_tokens(&tokens[i+1..], tokens[i+1].position()) {
-                Ok(expr) => Some(expr),
-                Err(ref mut es) => {
-                    errors.append(es);
-                    None
-                }
-            }
-        },
+    let mut value = Expr::from_tokens(
+        &tokens[assign_index + 1..],
+        tokens[assign_index + 1].position()
+    );
 
-        None => None
-    };
+    if let Err(ref mut es) = value {
+        errors.append(es);
+    }
 
     Some(if errors.is_empty() {
         Ok(Statement {
-            stmt_type: StatementType::Declare { value_name, value_type, value, constant },
+            stmt_type: StatementType::Declare { value_name, value_type, value: value.unwrap(), constant },
             first_position: tokens[0].position(),
             last_position: tokens.last().unwrap().position()
         })
