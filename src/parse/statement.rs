@@ -70,6 +70,7 @@ impl Statement {
             parse_declare,
             parse_for_loop,
             parse_return,
+            parse_while_loop,
             parse_assignment,
             parse_raw_expr
         ];
