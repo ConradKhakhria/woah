@@ -585,6 +585,8 @@ pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error
                     else_statement = Some(&lines[index]);
                 }
 
+                index += 1;
+
                 match parse_conditional_block(conditionals, else_statement) {
                     Ok(stmt) => statements.push(stmt),
                     Err(ref mut es) => errors.append(es)
