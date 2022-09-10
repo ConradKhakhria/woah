@@ -63,8 +63,7 @@ pub enum StatementType {
 #[derive(Debug)]
 pub struct Statement {
     pub stmt_type: StatementType,
-    pub first_position: (usize, usize),
-    pub last_position: (usize, usize)
+    positions: [(usize, usize); 2]
 }
 
 
@@ -92,6 +91,20 @@ impl Statement {
             .set_position(line.line_tokens[0].position())
             .set_message("Unrecognised syntax in statement")
             .into()
+    }
+
+
+    pub fn first_position(&self) -> (usize, usize) {
+        /* Gets the first position of the statement */
+
+        self.positions[0].clone()
+    }
+
+
+    pub fn last_position(&self) -> (usize, usize) {
+        /* Gets the last position of the statement */
+
+        self.positions[1].clone()
     }
 }
 
@@ -174,9 +187,16 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
 
     Some(if errors.is_empty() {
         Ok(Statement {
-            stmt_type: StatementType::Declare { value_name, value_type, value: value.unwrap(), constant },
-            first_position: tokens[0].position(),
-            last_position: tokens.last().unwrap().position()
+            stmt_type: StatementType::Declare {
+                value_name,
+                value_type,
+                value: value.unwrap(),
+                constant
+            },
+            positions: [
+                line.first_position(),
+                line.last_position()
+            ]
         })
     } else {
         Err(errors)
@@ -226,8 +246,10 @@ fn parse_assignment(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
                 assigned_to: assigned_to.unwrap(),
                 new_value: new_value.unwrap()
             },
-            first_position: tokens.first().unwrap().position(),
-            last_position: tokens.last().unwrap().position()
+            positions: [
+                line.first_position(),
+                line.last_position()
+            ]
         })
     } else {
         Err(errors)
@@ -272,8 +294,10 @@ fn parse_conditional(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
                 condition: condition.unwrap(),
                 block: block.unwrap()
             },
-            first_position: tokens[0].position(),
-            last_position: tokens[2].position()
+            positions: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
         })
     } else {
         Ok(Statement {
@@ -282,8 +306,10 @@ fn parse_conditional(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
                 block: block.unwrap(),
                 is_if: conditional_type == "if"
             },
-            first_position: tokens[0].position(),
-            last_position: line.line_derivs.last().unwrap().line_tokens.last().unwrap().position() // vile
+            positions: [
+                line.first_position(),
+                line.last_position()
+            ]
         })
     })
 }
@@ -313,8 +339,10 @@ fn parse_else(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     Some(match parse_statement_block(&line.line_derivs) {
         Ok(block) => Ok(Statement {
             stmt_type: StatementType::Else { block },
-            first_position: tokens[0].position(),
-            last_position: line.line_derivs.last().unwrap().line_tokens.last().unwrap().position()
+            positions: [
+                line.first_position(),
+                line.last_position()
+            ]
         }),
 
         Err(es) => Err(es)
@@ -400,8 +428,10 @@ fn parse_for_loop(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
                         }
                     }
                 },
-                first_position: tokens[0].position(),
-                last_position: tokens.last().unwrap().position()
+                positions: [
+                    line.first_position(),
+                    line.last_position()
+                ]
             }
         ))
     }
@@ -482,8 +512,10 @@ fn parse_return(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
 
     Some(Ok(Statement {
         stmt_type: StatementType::Return { value },
-        first_position: tokens[0].position(),
-        last_position: tokens.last().unwrap().position()
+        positions: [
+            line.first_position(),
+            line.last_position()
+        ]
     }))
 }
 
@@ -503,8 +535,10 @@ fn parse_expr(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
     Some(match Expr::from_tokens(tokens, tokens[0].position()) {
         Ok(expr) => Ok(Statement {
             stmt_type: StatementType::RawExpr { expr },
-            first_position: tokens[0].position(),
-            last_position: tokens.last().unwrap().position()
+            positions: [
+                line.first_position(),
+                line.last_position()
+            ]
         }),
         Err(es) => Err(es)
     })
