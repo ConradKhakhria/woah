@@ -48,6 +48,8 @@ impl TypeKind {
 impl PartialEq for TypeKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (TypeKind::ReportedError, _) => true,
+            (_, TypeKind::ReportedError) => true,
             (TypeKind::Bool, TypeKind::Bool) => true,
             (TypeKind::Char, TypeKind::Char) => true,
             (TypeKind::ClassName(x), TypeKind::ClassName(y)) => x == y,
