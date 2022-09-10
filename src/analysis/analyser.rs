@@ -1,35 +1,29 @@
 use crate::error::*;
+use crate::parse::Function;
 use crate::parse::Module;
+use crate::parse::TypeKind;
 use std::collections::HashMap;
-
-pub struct AnalysisResults<'a> {
-    modules: &'a HashMap<String, Module>,
-
-}
+use std::rc::Rc;
 
 
-impl<'a> AnalysisResults<'a> {
-    fn analyse(modules: &'a HashMap<String, Module>) -> Result<Self, Vec<Error>> {
-
-
-
-
-
-        Err(vec![])
-    }
-}
-
-
-pub fn analyse_program<'a>(modules: &'a HashMap<String, Module>) -> Result<AnalysisResults<'a>, Vec<Error>> {
-   /* Statically analyses a program from its modules
+pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
+   /* Statically analyses a program
     *
-    * this static analysis contains type-checking and escape analysis
-    *
-    * returns: the results of analysis or a list of errors
+    * analysis results contain
+    * - escape analysis on values
+    * - function last-statement returns
+    * - errors
     */
 
-    let mut results = AnalysisResults { modules };
+    let mut errors = vec![];
 
+    for module in modules.values() {
 
-    Err(vec![])
+    }   
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
