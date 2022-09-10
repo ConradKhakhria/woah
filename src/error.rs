@@ -9,6 +9,7 @@ pub struct Error {
 
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorKind {
+    FileSystemError,
     InterfaceError,
     ModuleError,
     NameError,
@@ -71,6 +72,7 @@ impl<T> Into<Result<T, Vec<Error>>> for Error {
 impl std::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
+            ErrorKind::FileSystemError    => "File System Error",
             ErrorKind::InterfaceError     => "Interface Error",
             ErrorKind::ModuleError        => "Module Error",
             ErrorKind::NameError          => "Name Error",
