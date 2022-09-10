@@ -30,6 +30,8 @@ pub enum TypeKind {
 
     NoneType,
 
+    ReportedError,  // for when there's an error in determining the type
+                    // which has already been reported.
     String,
 }
 
@@ -114,6 +116,7 @@ impl std::fmt::Display for TypeKind {
             TypeKind::Int => "int".into(),
             TypeKind::List(t) => format!("[]{}", t),
             TypeKind::NoneType => "<none>".into(),
+            TypeKind::ReportedError => "<type-error>".into(),
             TypeKind::String => "str".into()
         };
 
