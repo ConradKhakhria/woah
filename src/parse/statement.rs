@@ -267,12 +267,12 @@ fn parse_conditional_block(conditionals: Vec<&Line>, else_statement: Option<&Lin
     ];
 
     for conditional in conditionals {
-        let mut condition = Expr::from_tokens(
+        let condition = Expr::from_tokens(
             &conditional.line_tokens[1..],
             conditional.first_position()
         );
 
-        let mut body = parse_statement_block(&conditional.line_derivs);
+        let body = parse_statement_block(&conditional.line_derivs);
 
         match (condition, body) {
             (Ok(c), Ok(b)) => conditional_blocks.push((c, b)),
@@ -286,21 +286,17 @@ fn parse_conditional_block(conditionals: Vec<&Line>, else_statement: Option<&Lin
     }
 
     if let Some(line) = else_statement {
-        let mut condition = Expr::from_tokens(
-            &line.line_tokens[1..],
-            line.first_position()
-        );
+        if line.line_tokens.len() != 1 {
+            errors.push(
+                Error::new(ErrorKind::SyntaxError)
+                    .set_position(line.first_position())
+                    .set_message("this line should only contain the word 'else'")
+            );
+        }
 
-        let mut body = parse_statement_block(&line.line_derivs);
-
-        match (condition, body) {
-            (Ok(c), Ok(b)) => conditional_blocks.push((c, b)),
-            (Err(ref mut es1), Err(ref mut es2)) => {
-                errors.append(es1);
-                errors.append(es2);
-            },
-            (Err(ref mut es), _) => errors.append(es),
-            (_, Err(ref mut es)) => errors.append(es)
+        match parse_statement_block(&line.line_derivs) {
+            Ok(body) => else_block = Some(body),
+            Err(ref mut es) => errors.append(es)
         }
     }
 
