@@ -8,12 +8,13 @@ use std::collections::HashMap;
 use std::path::Path;
 
 
+#[derive(Debug)]
 pub enum ModuleType {
     None
 }
 
 
-#[derive(Getters)]
+#[derive(Debug, Getters)]
 pub struct Module {
     instance_methods: HashMap<String, Function>,
     module_methods: HashMap<String, Function>,
