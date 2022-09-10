@@ -15,10 +15,9 @@ pub enum StatementType {
         new_value: Expr,
     },
 
-    Conditional {
-        condition: Expr,
-        block: Vec<Statement>,
-        is_if: bool
+    ConditionalBlock {
+        conditional_blocks: Vec<(Expr, Vec<Statement>)>,
+        else_block: Option<Vec<Statement>>
     },
 
     Declare {
@@ -26,10 +25,6 @@ pub enum StatementType {
         value_type: Option<Rc<TypeKind>>,
         value: Expr,
         constant: bool
-    },
-
-    Else {
-        block: Vec<Statement>
     },
 
     IteratorForLoop {
@@ -68,17 +63,15 @@ pub struct Statement {
 
 
 impl Statement {
-    pub fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
+    fn from_line(line: &Line) -> Result<Self, Vec<Error>> {
         /* Creates a statement from a list of tokens */
 
         let parse_options = [
             parse_declare,
-            parse_conditional,
-            parse_else,
             parse_for_loop,
             parse_return,
             parse_assignment,
-            parse_expr
+            parse_raw_expr
         ];
     
         for option in parse_options {
@@ -111,8 +104,10 @@ impl Statement {
 
 /* Parsing */
 
+type ParseResult = Result<Statement, Vec<Error>>;
 
-fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
+
+fn parse_declare(line: &Line) -> Option<ParseResult> {
     /* Parses a value declaration */
 
     let tokens = line.line_tokens;
@@ -204,7 +199,7 @@ fn parse_declare(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
 }
 
 
-fn parse_assignment(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
+fn parse_assignment(line: &Line) -> Option<ParseResult> {
     /* Parses a value assignment */
 
     let tokens = line.line_tokens;
@@ -257,100 +252,98 @@ fn parse_assignment(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
 }
 
 
-fn parse_conditional(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
+fn parse_conditional_block(conditionals: Vec<&Line>, else_statement: Option<&Line>) -> ParseResult {
     /* Parses an if/elif/while stmt */
 
-    let tokens = line.line_tokens;
-    let mut errors: Vec<Error> = Vec::new();
+    let mut conditional_blocks = vec![];
+    let mut else_block = None;
+    let mut errors: Vec<Error> = vec![];
+    let positions = [
+        conditionals.first().unwrap().first_position(),
+        match else_statement {
+            Some(line) => line.last_position(),
+            None => conditionals.last().unwrap().last_position()
+        }
+    ];
 
-    let conditional_type = match tokens[0].to_string().as_str() {
-        "if"|"elif"|"while" => tokens[0].to_string(),
-        _ => return None
-    };
+    for conditional in conditionals {
+        let mut condition = Expr::from_tokens(
+            &conditional.line_tokens[1..],
+            conditional.first_position()
+        );
 
-    if line.line_derivs.is_empty() {
-        return Some(Error::new(ErrorKind::SyntaxError)
-                        .set_position(line.line_tokens.last().unwrap().position())
-                        .set_message("Conditional statements must have a block")
-                        .into());
-    }
+        let mut body = parse_statement_block(&conditional.line_derivs);
 
-    let mut condition = Expr::from_tokens(&tokens[1..], tokens[1].position());
-    let mut block = parse_statement_block(&line.line_derivs);
-
-    if let Err(ref mut es) = condition {
-        errors.append(es);
-    }
-
-    if let Err(ref mut es) = block {
-        errors.append(es);
-    }
-
-    Some(if !errors.is_empty() {
-        Err(errors)
-    } else if conditional_type == "while" {
-        Ok(Statement {
-            stmt_type: StatementType::WhileLoop {
-                condition: condition.unwrap(),
-                block: block.unwrap()
+        match (condition, body) {
+            (Ok(c), Ok(b)) => conditional_blocks.push((c, b)),
+            (Err(ref mut es1), Err(ref mut es2)) => {
+                errors.append(es1);
+                errors.append(es2);
             },
-            positions: [
-                tokens.first().unwrap().position(),
-                tokens.last().unwrap().position()
-            ]
+            (Err(ref mut es), _) => errors.append(es),
+            (_, Err(ref mut es)) => errors.append(es)
+        }
+    }
+
+    if let Some(line) = else_statement {
+        let mut condition = Expr::from_tokens(
+            &line.line_tokens[1..],
+            line.first_position()
+        );
+
+        let mut body = parse_statement_block(&line.line_derivs);
+
+        match (condition, body) {
+            (Ok(c), Ok(b)) => conditional_blocks.push((c, b)),
+            (Err(ref mut es1), Err(ref mut es2)) => {
+                errors.append(es1);
+                errors.append(es2);
+            },
+            (Err(ref mut es), _) => errors.append(es),
+            (_, Err(ref mut es)) => errors.append(es)
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(Statement {
+            stmt_type: StatementType::ConditionalBlock {
+                conditional_blocks,
+                else_block
+            },
+            positions
         })
     } else {
-        Ok(Statement {
-            stmt_type: StatementType::Conditional {
-                condition: condition.unwrap(),
-                block: block.unwrap(),
-                is_if: conditional_type == "if"
-            },
-            positions: [
-                line.first_position(),
-                line.last_position()
-            ]
-        })
-    })
+        Err(errors)
+    }
 }
 
 
-fn parse_else(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
-    /* Parses an else statement */
+fn parse_raw_expr(line: &Line) -> Option<ParseResult> {
+    /* Parses a raw expression statement */
 
     let tokens = line.line_tokens;
 
-    if tokens[0].to_string() != "else" {
-        return None;
-    }
-
-    if tokens.len() != 1 {
+    if line.line_derivs.len() > 0 {
         return Some(Error::new(ErrorKind::SyntaxError)
                         .set_position(tokens[0].position())
-                        .set_message("Expected syntax 'else {<body>}")
-                        .into());
-    } else if line.line_derivs.is_empty() {
-        return Some(Error::new(ErrorKind::SyntaxError)
-                        .set_position(line.line_tokens.last().unwrap().position())
-                        .set_message("Conditional statements must have a block")
+                        .set_message("A raw expr statement cannot have a block")
                         .into());
     }
 
-    Some(match parse_statement_block(&line.line_derivs) {
-        Ok(block) => Ok(Statement {
-            stmt_type: StatementType::Else { block },
+    Some(match Expr::from_tokens(tokens, tokens[0].position()) {
+        Ok(expr) => Ok(Statement {
+            stmt_type: StatementType::RawExpr { expr },
             positions: [
                 line.first_position(),
                 line.last_position()
             ]
         }),
-
         Err(es) => Err(es)
     })
 }
 
 
-fn parse_for_loop(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
+fn parse_for_loop(line: &Line) -> Option<ParseResult> {
     /* Parses a for loop */
 
     let tokens = line.line_tokens;
@@ -486,7 +479,7 @@ fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec
 }
 
 
-fn parse_return(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
+fn parse_return(line: &Line) -> Option<ParseResult> {
     /* Parses a return value */
 
     let tokens = line.line_tokens;
@@ -520,28 +513,53 @@ fn parse_return(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
 }
 
 
-fn parse_expr(line: &Line) -> Option<Result<Statement, Vec<Error>>> {
-    /* Parses a raw expression statement */
+fn parse_while_loop(line: &Line) -> Option<ParseResult> {
+    /* Attempts to parse a while loop statemnet */
 
     let tokens = line.line_tokens;
+    let mut errors = vec![];
 
-    if line.line_derivs.len() > 0 {
-        return Some(Error::new(ErrorKind::SyntaxError)
-                        .set_position(tokens[0].position())
-                        .set_message("A raw expr statement cannot have a block")
-                        .into());
+    if tokens[0].to_string() != "while" {
+        return None;
     }
 
-    Some(match Expr::from_tokens(tokens, tokens[0].position()) {
-        Ok(expr) => Ok(Statement {
-            stmt_type: StatementType::RawExpr { expr },
-            positions: [
-                line.first_position(),
-                line.last_position()
-            ]
-        }),
-        Err(es) => Err(es)
-    })
+    if tokens.len() == 1 {
+        return Some(
+            Error::new(ErrorKind::SyntaxError)
+                .set_position(line.first_position())
+                .set_message("while loop given empty condition")
+                .into()
+        );
+    }
+
+    let mut condition = Expr::from_tokens(&tokens[1..], tokens[1].position());
+    let mut block = parse_statement_block(&line.line_derivs);
+
+    if let Err(ref mut es) = condition {
+        errors.append(es);
+    }
+
+    if let Err(ref mut es) = block {
+        errors.append(es);
+    }
+
+
+    Some(
+        if errors.is_empty() {
+            Ok(Statement {
+                stmt_type: StatementType::WhileLoop {
+                    condition: condition.unwrap(),
+                    block: block.unwrap()
+                },
+                positions: [
+                    line.first_position(),
+                    line.last_position()
+                ]    
+            })
+        } else {
+            Err(errors)
+        }
+    )
 }
 
 
@@ -551,10 +569,49 @@ pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error
     let mut statements = vec![];
     let mut errors = vec![];
 
-    for line in lines.iter() {
-        match Statement::from_line(line) {
-            Ok(stmt) => statements.push(stmt),
-            Err(ref mut es) => errors.append(es)
+    let mut index = 0;
+
+    while index < lines.len() {
+        match lines[index].line_tokens[0].to_string().as_str() {
+            "if" => {
+                let mut conditionals = vec![ &lines[index] ];
+                let mut else_statement = None;
+
+                index += 1;
+
+                while lines[index].line_tokens[0].to_string() == "elif" {
+                    conditionals.push(&lines[index]);
+                    index += 1;
+                }
+
+                if lines[index].line_tokens[0].to_string() == "else" {
+                    else_statement = Some(&lines[index]);
+                }
+
+                match parse_conditional_block(conditionals, else_statement) {
+                    Ok(stmt) => statements.push(stmt),
+                    Err(ref mut es) => errors.append(es)
+                }
+            },
+
+            s@("elif"|"else") => {
+                errors.push(
+                    Error::new(ErrorKind::SyntaxError)
+                        .set_position(lines[index].first_position())
+                        .set_message(format!("'{}' statement has no preceding 'if' statement", s))
+                );
+
+                index += 1;
+            },
+
+            _ => {
+                match Statement::from_line(&lines[index]) {
+                    Ok(stmt) => statements.push(stmt),
+                    Err(ref mut es) => errors.append(es)
+                }
+
+                index += 1;
+            }
         }
     }
 
