@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::PathBuf;
 
 
 pub struct Interface {
@@ -17,13 +17,13 @@ impl Interface {
 
     /* User interface */
 
-
     pub fn build(&mut self) -> Result<(), Vec<Error>> {
         /* Builds a project (location and flags from std::env::args()) */
 
         let root_dir_name = std::env::args().nth(2).unwrap_or(".".into());
-
-        self.collect_modules(Path::new(&root_dir_name))?;
+        let src_path = Self::get_source_path(&root_dir_name)?;
+        
+        self.collect_modules(&src_path)?;
 
 
         Ok(())
@@ -32,8 +32,29 @@ impl Interface {
 
     /* Module and filesystem */
 
+    fn get_source_path(root_dir_name: &String) -> Result<PathBuf, Vec<Error>> {
+        /* Gets the path of the source directory */
 
-    fn collect_modules(&mut self, module_cursor: &Path) -> Result<(), Vec<Error>> {
+        let mut root_path = PathBuf::from(root_dir_name);
+        root_path.push("src");
+
+        match std::fs::metadata(&root_path) {
+            Ok(_) => Ok(root_path),
+
+            Err(e) => {
+                if let std::io::ErrorKind::NotFound = e.kind() {
+                    Error::new(ErrorKind::FileSystemError)
+                        .set_message("the path provided is not a valid project directory")
+                        .into()   
+                } else {
+                    Ok(root_path)
+                }
+            }
+        }
+    }
+
+
+    fn collect_modules(&mut self, module_cursor: &PathBuf) -> Result<(), Vec<Error>> {
         /* Collects all modules in a project */
 
         let mut errors = vec![];
@@ -44,7 +65,7 @@ impl Interface {
                     Ok(dir_entry) => {
                         let path = dir_entry.path();
 
-                        if let Err(ref mut es) = self.collect_modules(path.as_path()) {
+                        if let Err(ref mut es) = self.collect_modules(&path) {
                             errors.append(es);
                         }
                     }
