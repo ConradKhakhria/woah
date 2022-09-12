@@ -71,12 +71,16 @@ fn create_nested_lines<'s, 't>(tuples: &[(&'t [Token<'s>], usize)]) -> Vec<Line<
         }
 
         let inner_lines = create_nested_lines(&tuples[index + 1..next_level_line_index]);
-        lines.push(
-            Line {
-                line_tokens: tuples[index].0,
-                line_derivs: inner_lines
-            }
-        );
+        let new_line = Line {
+            line_tokens: tuples[index].0,
+            line_derivs: inner_lines
+        };
+
+        if new_line.line_tokens.len() > 0 {
+            lines.push(new_line);
+        } else if new_line.line_derivs.len() != 0 {
+            unreachable!();
+        }
 
         index = next_level_line_index;
     }
