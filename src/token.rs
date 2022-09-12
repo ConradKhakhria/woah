@@ -183,6 +183,10 @@ impl<'f> Lexer<'f> {
         ];
 
         for token_string in token_strings {
+            if token_string.starts_with("#") {
+                continue;
+            }
+
             self.match_token_string(token_string, &mut token_stack)
                 .map_err(|err| vec![ err ])?;
         }
@@ -208,7 +212,7 @@ impl<'f> Lexer<'f> {
         /* Splits a source string according to a regex */
         lazy_static! {
             static ref REGEX: Regex = Regex::new(concat!(
-                "#.*?\n( )*|",
+                "#[^\n]*|",
                 r"[a-zA-Z_][a-zA-Z0-9_]*|",
                 r"[0-9_]*[0-9]\.[0-9][0-9_]*|",
                 r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
