@@ -1,3 +1,4 @@
+use crate::analysis::analyse_program;
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
@@ -20,11 +21,14 @@ impl Interface {
     pub fn build(&mut self) -> Result<(), Vec<Error>> {
         /* Builds a project (location and flags from std::env::args()) */
 
+        // get modules
         let root_dir_name = std::env::args().nth(2).unwrap_or(".".into());
         let src_path = Self::get_source_path(&root_dir_name)?;
         
         self.collect_modules(&src_path)?;
 
+        // statically analyse modules
+        analyse_program(&self.modules)?;
 
         Ok(())
     }
