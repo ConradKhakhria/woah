@@ -149,7 +149,7 @@ fn parse_declare(line: &Line) -> Option<ParseResult> {
 
     for i in 2..tokens.len() {
         if tokens[i].to_string() == "=" {
-            if assign_index == 0 {
+            if assign_index != 0 {
                 return Some(Error::new(ErrorKind::SyntaxError)
                         .set_position(tokens[i].position())
                         .set_message("Found 2 assignments in declaration")
