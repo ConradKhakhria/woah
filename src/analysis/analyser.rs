@@ -1,10 +1,7 @@
+use crate::analysis::check_function_types;
 use crate::error::*;
-use crate::parse::Function;
 use crate::parse::Module;
-use crate::parse::TypeKind;
 use std::collections::HashMap;
-use std::rc::Rc;
-
 
 pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
    /* Statically analyses a program
@@ -18,8 +15,15 @@ pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Erro
     let mut errors = vec![];
 
     for module in modules.values() {
-
-    }   
+        for function_collection in [module.instance_methods(), module.module_methods()] {
+            for function in function_collection.values() {
+                match check_function_types(module, function) {
+                    Ok(_) => {},
+                    Err(ref mut es) => errors.append(es)
+                }
+            }
+        }
+    }
 
     if errors.is_empty() {
         Ok(())
