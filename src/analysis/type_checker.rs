@@ -117,6 +117,21 @@ impl<'a> TypeChecker<'a> {
                     self.get_nrfl_type(&statement)
                 }
 
+                StatementType::RawExpr { expr } => {
+                    self.get_expression_type(expr)
+                }
+
+                StatementType::Return { value } => {
+                    match value {
+                        Some(expr) => self.get_expression_type(expr),
+                        None => Ok(TypeKind::NoneType.rc())
+                    }
+                }
+
+                StatementType::WhileLoop { condition, block } => {
+                    self.get_while_loop_type(condition, block)
+                }
+
                 _ => Error::new(ErrorKind::UnimplementedError)
                         .set_position(statement.first_position())
                         .set_message("these statements cannot be type-checked yet")
@@ -402,8 +417,6 @@ impl<'a> TypeChecker<'a> {
 
         match self.get_expression_type(start) {
             Ok(tp) => {
-                println!("{}", tp);
-
                 match &*tp {
                     TypeKind::Float|TypeKind::Int => {},
 
@@ -443,6 +456,36 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+
+    fn get_while_loop_type(&mut self, condition: &Expr, block: &'a Vec<Statement>) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of a while loop */
+
+        let mut errors = vec![];
+
+        match self.get_expression_type(condition) {
+            Ok(tp) => {
+                if let TypeKind::Bool = &*tp {} else {
+                    errors.push(
+                        Error::new(ErrorKind::TypeError)
+                            .set_position(condition.first_position.clone())
+                            .set_message("expected boolean condition in while loop")
+                    );
+                }
+            }
+
+            Err(ref mut es) => errors.append(es)
+        }
+
+        if let Err(ref mut es) = self.get_statement_block_type(block) {
+            errors.append(es);
+        }
+
+        if errors.is_empty() {
+            Ok(TypeKind::NoneType.rc())
+        } else {
+            Err(errors)
+        }
+    }
 
     /* Expression type-checking */
 
