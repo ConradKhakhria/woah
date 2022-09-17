@@ -16,6 +16,7 @@ pub enum ModuleType {
 
 #[derive(Debug, Getters)]
 pub struct Module {
+    filename: String,
     instance_methods: HashMap<String, Function>,
     module_methods: HashMap<String, Function>,
     module_name: String,
@@ -53,6 +54,7 @@ impl Module {
         let lines = create_lines(tokens.as_slice());
 
         let mut module = Module {
+            filename: filename.clone(),
             instance_methods: HashMap::new(),
             module_methods: HashMap::new(),
             module_name: String::new(),
