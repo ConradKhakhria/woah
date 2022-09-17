@@ -19,7 +19,10 @@ pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Erro
             for function in function_collection.values() {
                 if let Err(es) = check_function_types(module, function) {
                     for e in es {
-                        errors.push(e.set_line(module.raw_lines()));
+                        errors.push(
+                            e.set_line(module.raw_lines())
+                             .set_filename(module.filename())
+                        );
                     }
                 }
             }
