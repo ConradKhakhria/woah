@@ -583,9 +583,8 @@ pub fn parse_statement_block(lines: &[Line]) -> Result<Vec<Statement>, Vec<Error
 
                 if lines[index].line_tokens[0].to_string() == "else" {
                     else_statement = Some(&lines[index]);
+                    index += 1;
                 }
-
-                index += 1;
 
                 match parse_conditional_block(conditionals, else_statement) {
                     Ok(stmt) => statements.push(stmt),
