@@ -99,19 +99,23 @@ impl<'a> TypeChecker<'a> {
             let mut statement_type = match &statement.stmt_type {
                 StatementType::Assign { assigned_to, new_value } => {
                     self.get_assignment_type(assigned_to, new_value)
-                },
+                }
 
                 StatementType::ConditionalBlock { .. } => {
                     self.get_conditional_type(&statement, )
-                },
+                }
 
                 StatementType::Declare { .. } => {
                     self.get_declaration_type(&statement)
-                },
+                }
 
                 StatementType::IteratorForLoop { .. } => {
                     self.get_ifl_type(&statement)
-                },
+                }
+
+                StatementType::NumericRangeForLoop { .. } => {
+                    self.get_nrfl_type(&statement)
+                }
 
                 _ => Error::new(ErrorKind::UnimplementedError)
                         .set_position(statement.first_position())
@@ -356,6 +360,76 @@ impl<'a> TypeChecker<'a> {
             }
 
             Err(ref mut es) => errors.append(es)
+        }
+
+        if let Err(ref mut es) = self.get_statement_block_type(block) {
+            errors.append(es);
+        }
+
+        if errors.is_empty() {
+            Ok(TypeKind::NoneType.rc())
+        } else {
+            Err(errors)
+        }
+    }
+
+
+    fn get_nrfl_type(&mut self, statement: &'a Statement) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of a numeric-range for loop */
+
+        let iterator_name;
+        let start;
+        let end;
+        let step;
+        let block;
+
+        match &statement.stmt_type {
+            StatementType::NumericRangeForLoop { iterator_name: i, start: v1,
+                                                 end: v2, step: v3, block: b } => {
+                iterator_name = i;
+                start = v1;
+                end = v2;
+                step = v3;
+                block = b;
+            },
+
+            _ => unreachable!()
+        }
+
+        let mut errors = vec![];
+        let number_type_error = Error::new(ErrorKind::TypeError)
+                                    .set_message("expected numeric value in for loop range");
+
+        match self.get_expression_type(start) {
+            Ok(tp) => {
+                println!("{}", tp);
+
+                match &*tp {
+                    TypeKind::Float|TypeKind::Int => {},
+
+                    _ => {
+                        errors.push(number_type_error.clone().set_position(start.first_position.clone()))
+                    }
+                }
+
+                self.add_to_scope(iterator_name, tp.clone(), true);
+            },
+
+            Err(ref mut es) => errors.append(es)
+        }
+
+        for number in [ end, step ] {
+            match self.get_expression_type(number) {
+                Ok(tp) => {
+                    match &*tp {
+                        TypeKind::Float|TypeKind::Int => {},
+    
+                        _ => errors.push(number_type_error.clone().set_position(start.first_position.clone()))
+                    }
+                },
+    
+                Err(ref mut es) => errors.append(es)
+            }
         }
 
         if let Err(ref mut es) = self.get_statement_block_type(block) {
