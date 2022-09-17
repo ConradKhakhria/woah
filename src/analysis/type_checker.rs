@@ -96,8 +96,6 @@ impl<'a> TypeChecker<'a> {
         for (index, statement) in statements.iter().enumerate() {
             self.final_statement_stack.push(index + 1 == statements.len());
 
-            println!("{:?}", statement);
-
             let mut statement_type = match &statement.stmt_type {
                 StatementType::Assign { assigned_to, new_value } => {
                     self.get_assignment_type(assigned_to, new_value)
