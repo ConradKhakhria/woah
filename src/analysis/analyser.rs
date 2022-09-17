@@ -17,9 +17,10 @@ pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Erro
     for module in modules.values() {
         for function_collection in [module.instance_methods(), module.module_methods()] {
             for function in function_collection.values() {
-                match check_function_types(module, function) {
-                    Ok(_) => {},
-                    Err(ref mut es) => errors.append(es)
+                if let Err(es) = check_function_types(module, function) {
+                    for e in es {
+                        errors.push(e.set_line(module.raw_lines()));
+                    }
                 }
             }
         }
