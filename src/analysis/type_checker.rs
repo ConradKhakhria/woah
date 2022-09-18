@@ -64,6 +64,13 @@ impl<'a> TypeChecker<'a> {
     }
 
 
+    fn drop_scope(&mut self) {
+        /* Attempts to remove a scope from the local namespace */
+
+        self.current_scope.pop().unwrap(); // panics if None
+    }
+
+
     fn get_from_scope(&self, name: &str) -> Option<&StackFrameElement<'a>> {
         /* Attempts to get a value from the scope */
 
@@ -89,6 +96,13 @@ impl<'a> TypeChecker<'a> {
         }
 
         true
+    }
+
+
+    fn new_scope(&mut self) {
+        /* Creates a new scope */
+
+        self.current_scope.push(vec![]);
     }
 
 
@@ -249,10 +263,14 @@ impl<'a> TypeChecker<'a> {
                 Err(ref mut es) => errors.append(es)
             }
 
+            self.new_scope();
+
             match self.get_statement_block_type(block) {
                 Ok(tp) => cond_branch_types.push(tp.clone()),
                 Err(ref mut es) => errors.append(es)
             }
+
+            self.drop_scope();
         }
 
         if let Some(block) = else_block {
@@ -360,7 +378,8 @@ impl<'a> TypeChecker<'a> {
         let block;
 
         match &statement.stmt_type {
-            StatementType::IteratorForLoop { iterator_name: i_n, range: r, block: b } => {
+            StatementType::IteratorForLoop { iterator_name: i_n, range: r,
+                                             block: b } => {
                 iterator_name = i_n;
                 range = r;
                 block = b;
@@ -384,6 +403,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 };
 
+                self.new_scope();
                 self.add_to_scope(iterator_name, iterator_type, true);
             }
 
@@ -393,6 +413,8 @@ impl<'a> TypeChecker<'a> {
         if let Err(ref mut es) = self.get_statement_block_type(block) {
             errors.append(es);
         }
+
+        self.drop_scope();
 
         if errors.is_empty() {
             Ok(TypeKind::NoneType.rc())
@@ -438,6 +460,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
 
+                self.new_scope();
                 self.add_to_scope(iterator_name, tp.clone(), true);
             },
 
@@ -461,6 +484,8 @@ impl<'a> TypeChecker<'a> {
         if let Err(ref mut es) = self.get_statement_block_type(block) {
             errors.append(es);
         }
+
+        self.drop_scope();
 
         if errors.is_empty() {
             Ok(TypeKind::NoneType.rc())
@@ -489,9 +514,13 @@ impl<'a> TypeChecker<'a> {
             Err(ref mut es) => errors.append(es)
         }
 
+        self.new_scope();
+
         if let Err(ref mut es) = self.get_statement_block_type(block) {
             errors.append(es);
         }
+
+        self.drop_scope();
 
         if errors.is_empty() {
             Ok(TypeKind::NoneType.rc())
@@ -517,6 +546,22 @@ impl<'a> TypeChecker<'a> {
 
             ExprKind::AttrRes { parent, attr_name } => {
                 self.get_attr_res_type(parent, attr_name)
+            }
+
+            ExprKind::Compound { operator, left, right } => {
+                self.get_compound_type(operator, [left, right])
+            }
+
+            ExprKind::Float(_) => {
+                Ok(TypeKind::Float.rc())
+            }
+
+            ExprKind::FunctionCall { function, args } => {
+                self.get_funcall_type(function, args)
+            }
+
+            ExprKind::Identifier(name) => {
+                self.get_ident_type(name, expression.first_position.clone())
             }
 
             _ => Error::new(ErrorKind::UnimplementedError)
@@ -648,6 +693,167 @@ impl<'a> TypeChecker<'a> {
                     .set_message(format!("attributes for type {} aren't implemented yet", t))
                     .into()
             }
+        }
+    }
+
+
+    fn get_compound_type(&self, op: &String, operands: [&Box<Expr>; 2]) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of a compound expression */
+    
+        let [left, right] = operands;
+        let mut left_type = self.get_expression_type(left);
+        let mut right_type = self.get_expression_type(right);
+        
+        let mut errors = vec![];
+
+        for result in [&mut left_type, &mut right_type] {
+            if let Err(ref mut es) = result {
+                errors.append(es);
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        match op.as_str() {
+            "+"|"-"|"*"|"/" => {
+                match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::Float, TypeKind::Float) => Ok(TypeKind::Float.rc()),
+                    (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
+                    (l, r) => {
+                        Error::new(ErrorKind::TypeError)
+                            .set_position(left.first_position.clone())
+                            .set_message(format!(
+                                "cannot perform '{}' between values of type {} and {}",
+                                op,
+                                l,
+                                r
+                            ))
+                            .into()
+                    }
+                }
+            }
+
+            "%" => {
+                match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
+                    _ => Error::new(ErrorKind::TypeError)
+                            .set_position(left.first_position.clone())
+                            .set_message("modulo ('%') expressions must take 2 integers")
+                            .into()
+                }
+            }
+
+            _ => { // comparison operators
+                match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::Float, TypeKind::Float) => Ok(TypeKind::Float.rc()),
+                    (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
+                    (l, r) => {
+                        Error::new(ErrorKind::TypeError)
+                            .set_position(left.first_position.clone())
+                            .set_message(format!(
+                                "cannot perform '{}' between values of type {} and {}",
+                                op,
+                                l,
+                                r
+                            ))
+                            .into()
+                    }
+                }
+            }
+        }
+    }
+
+
+    fn get_funcall_type(&self, function: &Box<Expr>, args: &Vec<Expr>) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of a function-call expression */
+
+        let mut errors = vec![];
+        let mut supplied_arg_types = vec![];
+
+        for arg in args.iter() {
+            match self.get_expression_type(arg) {
+                Ok(tp) => supplied_arg_types.push(tp.clone()),
+
+                Err(ref mut es) => {
+                    errors.append(es);
+                    supplied_arg_types.push(TypeKind::ReportedError.rc());
+                }
+            }
+        }
+
+        let return_type = match self.get_expression_type(function) {
+            Ok(tp) => {
+                match &*tp {
+                    TypeKind::Function { args: defined_arg_types, return_type } => {
+                        if defined_arg_types.len() != supplied_arg_types.len() {
+                            errors.push(
+                                Error::new(ErrorKind::TypeError)
+                                    .set_position(function.first_position.clone())
+                                    .set_message(format!(
+                                        "function takes {} but received {}",
+                                        defined_arg_types.len(),
+                                        supplied_arg_types.len()
+                                    ))
+                            );
+                        } else {
+                            for i in 0..defined_arg_types.len() {
+                                if defined_arg_types[i] != supplied_arg_types[i] {
+                                    errors.push(
+                                        Error::new(ErrorKind::TypeError)
+                                            .set_position(args[i].first_position.clone())
+                                            .set_message(format!(
+                                                "expected value of type {}, received {}",
+                                                &defined_arg_types[i],
+                                                &supplied_arg_types[i]
+                                            ))
+                                    );
+                                }
+                            }
+                        }
+
+                        return_type.clone()
+                    }
+
+                    _ => {
+                        errors.push(
+                            Error::new(ErrorKind::TypeError)
+                                .set_position(function.first_position.clone())
+                                .set_message(format!("expected function, received {}", tp))
+                        );
+
+                        TypeKind::ReportedError.rc()
+                    }
+                }
+            }
+
+            Err(ref mut es) => {
+                errors.append(es);
+                TypeKind::ReportedError.rc()
+            }
+        };
+
+        if errors.is_empty() {
+            Ok(return_type)
+        } else {
+            Err(errors)
+        }
+    }
+
+
+    fn get_ident_type(&self, ident: &String, pos: (usize, usize)) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of an identifier */
+
+        if let Some(elem) = self.get_from_scope(&ident) {
+            Ok(elem.value_type.clone())
+        } else if let Some(module) = self.modules.get(ident) {
+            Ok(TypeKind::ClassName(module.module_name().clone()).rc())
+        } else {
+            Error::new(ErrorKind::NameError)
+                .set_position(pos)
+                .set_message(format!("cannot find identifier '{}' in this scope", ident))
+                .into()
         }
     }
 }
