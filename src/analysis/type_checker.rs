@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::parse::*;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 
@@ -11,6 +12,7 @@ struct StackFrameElement<'a> {
 
 
 struct TypeChecker<'a> {
+    modules: &'a HashMap<String, Module>,
     current_function: &'a Function,
     current_module: &'a Module,
     current_scope: Vec<Vec<StackFrameElement<'a>>>,
@@ -19,17 +21,33 @@ struct TypeChecker<'a> {
 
 
 impl<'a> TypeChecker<'a> {
-    fn new(current_module: &'a Module, current_function: &'a Function) -> Self {
-        /* Creates a new TypeChecker for a function */
+    fn check_function_types(&mut self) -> Result<(), Vec<Error>> {
+        /* Checks the types of a function */
 
-        TypeChecker {
-            current_function,
-            current_module, 
-            current_scope: vec![vec![]],
-            final_statement_stack: vec![]
+        for arg in self.current_function.args.iter() {
+            self.add_to_scope(
+                &arg.arg_name,
+                arg.arg_type.clone(), 
+                arg.arg_mutable
+            );
         }
+    
+        let ret_type = self.get_statement_block_type(&self.current_function.body)?;
+    
+        if ret_type != self.current_function.return_type.clone() {
+            return Error::new(ErrorKind::TypeError)
+                        .set_position(self.current_function.first_position())
+                        .set_message(format!(
+                            "function '{}' expects to return {} but in fact returns {}",
+                            &self.current_function.name,
+                            &self.current_function.return_type,
+                            ret_type
+                        ))
+                        .into();
+        }
+    
+        Ok(()) 
     }
-
 
     /* Misc */
 
@@ -131,11 +149,6 @@ impl<'a> TypeChecker<'a> {
                 StatementType::WhileLoop { condition, block } => {
                     self.get_while_loop_type(condition, block)
                 }
-
-                _ => Error::new(ErrorKind::UnimplementedError)
-                        .set_position(statement.first_position())
-                        .set_message("these statements cannot be type-checked yet")
-                        .into()
             };
 
             self.final_statement_stack.pop();
@@ -487,41 +500,185 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+
     /* Expression type-checking */
 
-    fn get_expression_type(&mut self, _expression: &Expr) -> Result<Rc<TypeKind>, Vec<Error>> {
+    fn get_expression_type(&self, expression: &Expr) -> Result<Rc<TypeKind>, Vec<Error>> {
         /* Gets the type of an expression */
 
-        Err(vec![])
+        match &expression.expr_kind {
+            ExprKind::ArrayIndexing { array, index } => {
+                self.get_array_indexing_type(array, index)
+            }
+
+            ExprKind::ArrayLiteral { elems } => {
+                self.get_array_literal_type(elems)
+            }
+
+            ExprKind::AttrRes { parent, attr_name } => {
+                self.get_attr_res_type(parent, attr_name)
+            }
+
+            _ => Error::new(ErrorKind::UnimplementedError)
+                    .set_position(expression.first_position.clone())
+                    .set_message("these expressions cannot be type-checked yet")
+                    .into()
+        }
+    }
+
+
+    fn get_array_indexing_type(&self, array: &Box<Expr>, index: &Box<Expr>) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of an array indexing */
+
+        let mut errors = vec![];
+
+        let array_elem_type = match self.get_expression_type(&array) {
+            Ok(tp) => {
+                match &*tp {
+                    TypeKind::List(deriv) => deriv.clone(),
+                    _ => {
+                        errors.push(
+                            Error::new(ErrorKind::TypeError)
+                                .set_position(array.first_position.clone())
+                                .set_message("cannot index a non-array type")
+                        );
+                        TypeKind::ReportedError.rc()
+                    }
+                }
+            }
+
+            Err(ref mut es) => {
+                errors.append(es);
+                TypeKind::ReportedError.rc()
+            }
+        };
+
+        match self.get_expression_type(&index) {
+            Ok(tp) => {
+                if let TypeKind::Int = &*tp {} else {
+                    errors.push(
+                        Error::new(ErrorKind::TypeError)
+                            .set_position(index.first_position.clone())
+                            .set_message("you can only index an array with an integer")
+                    );
+                }
+            }
+
+            Err(ref mut es) => errors.append(es)
+        }
+
+        if errors.is_empty() {
+            Ok(array_elem_type)
+        } else {
+            Err(errors)
+        }
+    }
+
+
+    fn get_array_literal_type(&self, elems: &Vec<Expr>) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of an array literal */
+
+        if elems.is_empty() {
+            return Ok(TypeKind::EmptyList.rc());
+        }
+
+        let mut errors = vec![];
+
+        let first_elem_type = self.get_expression_type(&elems[0])?;
+
+        for elem in elems[1..].iter() {
+            match self.get_expression_type(elem) {
+                Ok(tp) => {
+                    if first_elem_type != tp {
+                        errors.push(
+                            Error::new(ErrorKind::TypeError)
+                                .set_position(elem.first_position.clone())
+                                .set_message(format!("expected expression of type {}, found {}", first_elem_type, tp))
+                        );
+                    }
+                }
+
+                Err(ref mut es) => errors.append(es)
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(first_elem_type)
+        } else {
+            Err(errors)
+        }
+    }
+
+
+    fn get_attr_res_type(&self, parent: &Box<Expr>, attr_name: &String) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of an attribute resolution */
+
+        match &*self.get_expression_type(parent)? {
+            // module-scoped functions etc
+            TypeKind::ClassName(class_name) => {
+                let class = self.modules.get(class_name).unwrap();
+
+                match class.module_methods().get(attr_name) {
+                    Some(func) => {
+                        let type_kind: TypeKind = func.into();
+
+                        Ok(type_kind.rc())
+                    }
+
+                    None => {
+                        Error::new(ErrorKind::NameError)
+                            .set_position(parent.last_position.clone())
+                            .set_message(format!("module '{}' has no attribute '{}'", class_name, attr_name))
+                            .into()
+                    }
+                }
+            }
+
+            // object methods and attributes
+            TypeKind::HigherOrder { name, .. } => {
+                Error::new(ErrorKind::UnimplementedError)
+                    .set_position(parent.last_position.clone())
+                    .set_message("objects have not been implemented yet")
+                    .into()
+            }
+
+            t => {
+                Error::new(ErrorKind::UnimplementedError)
+                    .set_position(parent.last_position.clone())
+                    .set_message(format!("attributes for type {} aren't implemented yet", t))
+                    .into()
+            }
+        }
     }
 }
 
+pub fn check_types(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
+    /* Checks the types of all modules */
 
-pub fn check_function_types<'a>(current_module: &'a Module, current_function: &'a Function) -> Result<(), Vec<Error>> {
-    /* Checks the types of a function */
+    let mut errors = vec![];
 
-    let mut type_checker = TypeChecker::new(current_module, current_function);
-    
-    for arg in current_function.args.iter() {
-        type_checker.add_to_scope(
-            &arg.arg_name,
-            arg.arg_type.clone(), 
-            arg.arg_mutable
-        );
-    }
+    for module in modules.values() {
+        for function_collection in [module.instance_methods(), module.module_methods()] {
+            for function in function_collection.values() {
+                let mut type_checker = TypeChecker {
+                    modules,
+                    current_module: module,
+                    current_function: function,
+                    current_scope: vec![ vec![] ],
+                    final_statement_stack: vec![]
+                };
 
-    let ret_type = type_checker.get_statement_block_type(&current_function.body)?;
-
-    if ret_type != current_function.return_type.clone() {
-        return Error::new(ErrorKind::TypeError)
-                    .set_position(current_function.first_position())
-                    .set_message(format!(
-                        "function '{}' expects to return {} but in fact returns {}",
-                        &current_function.name,
-                        &current_function.return_type,
-                        ret_type
-                    ))
-                    .into();
+                if let Err(es) = type_checker.check_function_types() {
+                    for error in es {
+                        errors.push(
+                            error
+                                .set_line(module.raw_lines())
+                                .set_filename(module.filename())
+                        );
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
