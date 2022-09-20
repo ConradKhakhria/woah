@@ -388,6 +388,8 @@ impl<'a> TypeChecker<'a> {
             _ => unreachable!()
         }
 
+        self.new_scope();
+
         match self.get_expression_type(range) {
             Ok(tp) => {
                 let iterator_type = match &*tp {
@@ -403,7 +405,6 @@ impl<'a> TypeChecker<'a> {
                     }
                 };
 
-                self.new_scope();
                 self.add_to_scope(iterator_name, iterator_type, true);
             }
 
@@ -450,6 +451,8 @@ impl<'a> TypeChecker<'a> {
         let number_type_error = Error::new(ErrorKind::TypeError)
                                     .set_message("expected numeric value in for loop range");
 
+        self.new_scope();
+
         match self.get_expression_type(start) {
             Ok(tp) => {
                 match &*tp {
@@ -460,7 +463,6 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
 
-                self.new_scope();
                 self.add_to_scope(iterator_name, tp.clone(), true);
             },
 
@@ -575,11 +577,6 @@ impl<'a> TypeChecker<'a> {
             ExprKind::Unary { operator, operand } => {
                 self.get_unary_type(operator, operand)
             }
-
-            _ => Error::new(ErrorKind::UnimplementedError)
-                    .set_position(expression.first_position())
-                    .set_message("these expressions cannot be type-checked yet")
-                    .into()
         }
     }
 
@@ -692,7 +689,7 @@ impl<'a> TypeChecker<'a> {
             }
 
             // object methods and attributes
-            TypeKind::HigherOrder { name, .. } => {
+            TypeKind::HigherOrder { .. } => {
                 Error::new(ErrorKind::UnimplementedError)
                     .set_position(parent.last_position())
                     .set_message("objects have not been implemented yet")
