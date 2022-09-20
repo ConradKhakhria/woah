@@ -203,19 +203,10 @@ impl<'a> TypeChecker<'a> {
         let assigned_to_type = assigned_to_type.unwrap();
         let new_value_type = new_value_type.unwrap();
 
-        if assigned_to_type != new_value_type {
-            errors.push(
-                Error::new(ErrorKind::TypeError)
-                    .set_position(assigned_to.first_position())
-                    .set_message(format!(
-                        "assigning value of type {} to a value of type {}",
-                        new_value_type,
-                        assigned_to_type
-                    ))
-            );
+        match assigned_to_type.can_assign(&new_value_type, new_value.first_position()) {
+            Ok(()) => Ok(assigned_to_type.clone()),
+            Err(e) => e.into()
         }
-
-        Ok(assigned_to_type.clone())
     }
 
 
@@ -590,6 +581,14 @@ impl<'a> TypeChecker<'a> {
             Ok(tp) => {
                 match &*tp {
                     TypeKind::List(deriv) => deriv.clone(),
+                    TypeKind::EmptyList => {
+                        errors.push(
+                            Error::new(ErrorKind::TypeError)
+                                .set_position(array.first_position())
+                                .set_message("cannot index an empty array")
+                        );
+                        TypeKind::ReportedError.rc()
+                    }
                     _ => {
                         errors.push(
                             Error::new(ErrorKind::TypeError)

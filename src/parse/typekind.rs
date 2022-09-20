@@ -37,6 +37,61 @@ pub enum TypeKind {
 
 
 impl TypeKind {
+    pub fn can_assign(&self, value_type: &Rc<TypeKind>, pos: (usize, usize)) -> Result<(), Error> {
+       /* Returns whether a value with value_type can be assigned to self
+        *
+        * This is distinct from checking for type equality as:
+        * - EmptyList can be assigned to all lists
+        * - ReportedError can be assigned to all types
+        * - NoneType and ClassName can be assigned to nothing
+        */
+
+        let generic_error_msg = format!("cannot assign value of type {} to type {}", value_type, self);
+        let generic_error = Err(
+            Error::new(ErrorKind::TypeError)
+                .set_position(pos)
+                .set_message(generic_error_msg)
+        );
+
+        match (self, &**value_type) {
+            /* Special cases */
+            (TypeKind::List(_), TypeKind::EmptyList) => generic_error,
+            (_, TypeKind::ReportedError) => Ok(()),
+            (_, TypeKind::ClassName(_)|TypeKind::NoneType) => generic_error,
+
+            /* All others */
+            (TypeKind::Bool, TypeKind::Bool) => Ok(()),
+            (TypeKind::Char, TypeKind::Char) => Ok(()),
+            (TypeKind::Float, TypeKind::Float) => Ok(()),
+            (TypeKind::Function { .. }, TypeKind::Function { .. }) => {
+                if self == &**value_type {
+                    Ok(())
+                } else {
+                    generic_error
+                }
+            }
+            (TypeKind::HigherOrder { name: n1, args: a1 },
+             TypeKind::HigherOrder { name: n2, args: a2 }) => {
+                if n1 != n2 || a1.len() != a2.len() {
+                    return generic_error;
+                }
+
+                for i in 0..a1.len() {
+                    a1[i].can_assign(&a2[i], pos)?;
+                }
+
+                Ok(())
+            }
+            (TypeKind::Int, TypeKind::Int) => Ok(()),
+            (TypeKind::List(a), TypeKind::List(b)) => {
+                a.can_assign(b, pos)
+            }
+            (TypeKind::String, TypeKind::String) => Ok(()),
+            _ => generic_error
+        }
+    }
+
+
     pub fn rc(self) -> Rc<TypeKind> {
         /* Wraps self in an Rc<> */
 
