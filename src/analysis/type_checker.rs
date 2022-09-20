@@ -564,6 +564,18 @@ impl<'a> TypeChecker<'a> {
                 self.get_ident_type(name, expression.first_position())
             }
 
+            ExprKind::Integer(_) => {
+                Ok(TypeKind::Int.rc())
+            }
+
+            ExprKind::String(_) => {
+                Ok(TypeKind::String.rc())
+            }
+
+            ExprKind::Unary { operator, operand } => {
+                self.get_unary_type(operator, operand)
+            }
+
             _ => Error::new(ErrorKind::UnimplementedError)
                     .set_position(expression.first_position())
                     .set_message("these expressions cannot be type-checked yet")
@@ -854,6 +866,26 @@ impl<'a> TypeChecker<'a> {
                 .set_position(pos)
                 .set_message(format!("cannot find identifier '{}' in this scope", ident))
                 .into()
+        }
+    }
+
+
+    fn get_unary_type(&self, op: &String, operand: &Box<Expr>) -> Result<Rc<TypeKind>, Vec<Error>> {
+        /* Gets the type of a unary expression */
+
+        match op.as_str() {
+            "-" => {
+                match &*self.get_expression_type(operand)? {
+                    TypeKind::Float => Ok(TypeKind::Float.rc()),
+                    TypeKind::Int => Ok(TypeKind::Int.rc()),
+                    t => Error::new(ErrorKind::TypeError)
+                            .set_position(operand.first_position())
+                            .set_message(format!("cannot perform '-' on type {}", t))
+                            .into()
+                }
+            }
+
+            _ => unreachable!()
         }
     }
 }
