@@ -206,7 +206,7 @@ impl<'a> TypeChecker<'a> {
         if assigned_to_type != new_value_type {
             errors.push(
                 Error::new(ErrorKind::TypeError)
-                    .set_position(assigned_to.first_position.clone())
+                    .set_position(assigned_to.first_position())
                     .set_message(format!(
                         "assigning value of type {} to a value of type {}",
                         new_value_type,
@@ -254,7 +254,7 @@ impl<'a> TypeChecker<'a> {
                     if let TypeKind::Bool = &*tp {} else {
                         errors.push(
                             Error::new(ErrorKind::TypeError)
-                                .set_position(condition.first_position.clone())
+                                .set_position(condition.first_position())
                                 .set_message(format!("expected boolean condition in conditioanl, got {}", tp))
                         );
                     }
@@ -395,7 +395,7 @@ impl<'a> TypeChecker<'a> {
                     _ => {
                         errors.push(
                             Error::new(ErrorKind::TypeError)
-                                .set_position(range.first_position.clone())
+                                .set_position(range.first_position())
                                 .set_message("cannot iterate over a non-list type")
                         );
 
@@ -456,7 +456,7 @@ impl<'a> TypeChecker<'a> {
                     TypeKind::Float|TypeKind::Int => {},
 
                     _ => {
-                        errors.push(number_type_error.clone().set_position(start.first_position.clone()))
+                        errors.push(number_type_error.clone().set_position(start.first_position()))
                     }
                 }
 
@@ -473,7 +473,7 @@ impl<'a> TypeChecker<'a> {
                     match &*tp {
                         TypeKind::Float|TypeKind::Int => {},
     
-                        _ => errors.push(number_type_error.clone().set_position(start.first_position.clone()))
+                        _ => errors.push(number_type_error.clone().set_position(start.first_position()))
                     }
                 },
     
@@ -505,7 +505,7 @@ impl<'a> TypeChecker<'a> {
                 if let TypeKind::Bool = &*tp {} else {
                     errors.push(
                         Error::new(ErrorKind::TypeError)
-                            .set_position(condition.first_position.clone())
+                            .set_position(condition.first_position())
                             .set_message("expected boolean condition in while loop")
                     );
                 }
@@ -561,11 +561,11 @@ impl<'a> TypeChecker<'a> {
             }
 
             ExprKind::Identifier(name) => {
-                self.get_ident_type(name, expression.first_position.clone())
+                self.get_ident_type(name, expression.first_position())
             }
 
             _ => Error::new(ErrorKind::UnimplementedError)
-                    .set_position(expression.first_position.clone())
+                    .set_position(expression.first_position())
                     .set_message("these expressions cannot be type-checked yet")
                     .into()
         }
@@ -584,7 +584,7 @@ impl<'a> TypeChecker<'a> {
                     _ => {
                         errors.push(
                             Error::new(ErrorKind::TypeError)
-                                .set_position(array.first_position.clone())
+                                .set_position(array.first_position())
                                 .set_message("cannot index a non-array type")
                         );
                         TypeKind::ReportedError.rc()
@@ -603,7 +603,7 @@ impl<'a> TypeChecker<'a> {
                 if let TypeKind::Int = &*tp {} else {
                     errors.push(
                         Error::new(ErrorKind::TypeError)
-                            .set_position(index.first_position.clone())
+                            .set_position(index.first_position())
                             .set_message("you can only index an array with an integer")
                     );
                 }
@@ -637,7 +637,7 @@ impl<'a> TypeChecker<'a> {
                     if first_elem_type != tp {
                         errors.push(
                             Error::new(ErrorKind::TypeError)
-                                .set_position(elem.first_position.clone())
+                                .set_position(elem.first_position())
                                 .set_message(format!("expected expression of type {}, found {}", first_elem_type, tp))
                         );
                     }
@@ -672,7 +672,7 @@ impl<'a> TypeChecker<'a> {
 
                     None => {
                         Error::new(ErrorKind::NameError)
-                            .set_position(parent.last_position.clone())
+                            .set_position(parent.last_position())
                             .set_message(format!("module '{}' has no attribute '{}'", class_name, attr_name))
                             .into()
                     }
@@ -682,14 +682,14 @@ impl<'a> TypeChecker<'a> {
             // object methods and attributes
             TypeKind::HigherOrder { name, .. } => {
                 Error::new(ErrorKind::UnimplementedError)
-                    .set_position(parent.last_position.clone())
+                    .set_position(parent.last_position())
                     .set_message("objects have not been implemented yet")
                     .into()
             }
 
             t => {
                 Error::new(ErrorKind::UnimplementedError)
-                    .set_position(parent.last_position.clone())
+                    .set_position(parent.last_position())
                     .set_message(format!("attributes for type {} aren't implemented yet", t))
                     .into()
             }
@@ -723,7 +723,7 @@ impl<'a> TypeChecker<'a> {
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     (l, r) => {
                         Error::new(ErrorKind::TypeError)
-                            .set_position(left.first_position.clone())
+                            .set_position(left.first_position())
                             .set_message(format!(
                                 "cannot perform '{}' between values of type {} and {}",
                                 op,
@@ -739,7 +739,7 @@ impl<'a> TypeChecker<'a> {
                 match (&*left_type.unwrap(), &*right_type.unwrap()) {
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     _ => Error::new(ErrorKind::TypeError)
-                            .set_position(left.first_position.clone())
+                            .set_position(left.first_position())
                             .set_message("modulo ('%') expressions must take 2 integers")
                             .into()
                 }
@@ -751,7 +751,7 @@ impl<'a> TypeChecker<'a> {
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     (l, r) => {
                         Error::new(ErrorKind::TypeError)
-                            .set_position(left.first_position.clone())
+                            .set_position(left.first_position())
                             .set_message(format!(
                                 "cannot perform '{}' between values of type {} and {}",
                                 op,
@@ -790,7 +790,7 @@ impl<'a> TypeChecker<'a> {
                         if defined_arg_types.len() != supplied_arg_types.len() {
                             errors.push(
                                 Error::new(ErrorKind::TypeError)
-                                    .set_position(function.first_position.clone())
+                                    .set_position(function.first_position())
                                     .set_message(format!(
                                         "function takes {} but received {}",
                                         defined_arg_types.len(),
@@ -802,7 +802,7 @@ impl<'a> TypeChecker<'a> {
                                 if defined_arg_types[i] != supplied_arg_types[i] {
                                     errors.push(
                                         Error::new(ErrorKind::TypeError)
-                                            .set_position(args[i].first_position.clone())
+                                            .set_position(args[i].first_position())
                                             .set_message(format!(
                                                 "expected value of type {}, received {}",
                                                 &defined_arg_types[i],
@@ -819,7 +819,7 @@ impl<'a> TypeChecker<'a> {
                     _ => {
                         errors.push(
                             Error::new(ErrorKind::TypeError)
-                                .set_position(function.first_position.clone())
+                                .set_position(function.first_position())
                                 .set_message(format!("expected function, received {}", tp))
                         );
 

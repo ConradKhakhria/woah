@@ -48,8 +48,7 @@ pub enum ExprKind {
 pub struct Expr {
     pub expr_kind: ExprKind,
     pub expr_type: Option<Rc<TypeKind>>,
-    pub first_position: (usize, usize),
-    pub last_position: (usize, usize)
+    pub position: [(usize, usize); 2]
 }
 
 
@@ -82,6 +81,20 @@ impl Expr {
             .set_position(tokens[0].position())
             .set_message("Unrecognised syntax in expression")
             .into()
+    }
+
+
+    pub fn first_position(&self) -> (usize, usize) {
+        /* Gets the first position of the expression */
+
+        self.position[0].clone()
+    }
+
+
+    pub fn last_position(&self) -> (usize, usize) {
+        /* Gets the last position of the expression */
+
+        self.position[1].clone()
     }
 }
 
@@ -148,8 +161,10 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
                     Ok(es) => Ok(Expr {
                         expr_kind: ExprKind::ArrayLiteral { elems: es },
                         expr_type: None,
-                        first_position: tokens[0].position(),
-                        last_position: contents.last().unwrap_or(&tokens[0]).position()
+                        position: [
+                            tokens.first().unwrap().position(),
+                            tokens.last().unwrap().position()
+                        ]
                     }),
                     Err(es) => Err(es)
                 })
@@ -170,8 +185,10 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
         Expr {
             expr_kind,
             expr_type: None,
-            first_position: tokens[0].position(),
-            last_position: tokens[0].position()
+            position: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
         }
     ))
 }
@@ -230,8 +247,10 @@ fn parse_attr_res(tokens: &[Token]) -> ParseOption {
                 attr_name: attr_name.unwrap()
             },
             expr_type: None,
-            first_position: tokens[0].position(),
-            last_position: tokens.last().unwrap().position()
+            position: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
         })
     } else {
         Err(errors)
@@ -264,8 +283,10 @@ fn parse_compound(tokens: &[Token]) -> ParseOption {
                             Ok(Expr {
                                 expr_kind,
                                 expr_type: None,
-                                first_position: tokens[0].position(),
-                                last_position: tokens.last().unwrap().position()
+                                position: [
+                                    tokens.first().unwrap().position(),
+                                    tokens.last().unwrap().position()
+                                ]
                             })
                         } else {
                             let _ = left.map_err(|mut es| errors.append(&mut es));
@@ -287,8 +308,10 @@ fn parse_compound(tokens: &[Token]) -> ParseOption {
                     operand: Box::new(expr)
                 },
                 expr_type: None,
-                first_position: tokens[0].position(),
-                last_position: tokens.last().unwrap().position()
+                position: [
+                    tokens.first().unwrap().position(),
+                    tokens.last().unwrap().position()
+                ]
             })
         } else {
             Error::new(ErrorKind::SyntaxError)
@@ -343,8 +366,10 @@ fn parse_funcall(tokens: &[Token]) -> ParseOption {
         Expr {
             expr_kind: ExprKind::FunctionCall { function, args },
             expr_type: None,
-            first_position: tokens.first().unwrap().position(),
-            last_position: tokens.last().unwrap().position()
+            position: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
         }
     ))
 }
@@ -378,8 +403,10 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
         Expr {
             expr_kind: ExprKind::ArrayIndexing { array, index },
             expr_type: None,
-            first_position: tokens.first().unwrap().position(),
-            last_position: tokens.last().unwrap().position()
+            position: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
         }
     ))
 }

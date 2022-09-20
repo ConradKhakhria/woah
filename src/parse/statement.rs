@@ -451,8 +451,10 @@ fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec
             let step = Expr {
                 expr_kind: ExprKind::Integer(1),
                 expr_type: Some(TypeKind::Int.rc()),
-                first_position: tokens[0].position(),
-                last_position: tokens[0].position()
+                position: [
+                    tokens[0].position(),
+                    tokens[0].position()
+                ]
             };
 
             Ok(Ok([start, end, step]))
