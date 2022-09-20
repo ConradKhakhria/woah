@@ -64,6 +64,66 @@ impl<'a> TypeChecker<'a> {
     }
 
 
+    fn contains_prohibited_assignment(&self, value: &Expr) -> Result<(), Error> {
+        /* Returns an error if this value cannot be assigned to */
+
+        let error_message = match &value.expr_kind {
+            ExprKind::ArrayIndexing { array, .. } => {
+                return self.contains_prohibited_assignment(array);
+            }
+
+            ExprKind::ArrayLiteral { .. } => {
+                Some("array literals cannot be assigned to".to_string())
+            }
+
+            ExprKind::AttrRes { parent, .. } => {
+                return self.contains_prohibited_assignment(parent);
+            }
+
+            ExprKind::Compound { .. }|ExprKind::Unary { .. } => {
+                Some("expressions of this kind cannot be assigned to".into())
+            }
+
+            ExprKind::Float(_)|ExprKind::Integer(_) => {
+                Some("numeric literals cannot be assigned to".into())
+            }
+
+            ExprKind::FunctionCall { .. } => {
+                Some("function calls cannot be assigned to".into())
+            }
+
+            ExprKind::Identifier(ident) => {
+                match self.get_from_scope(ident) {
+                    Some(elem) => {
+                        if elem.constant {
+                            Some(format!("cannot assign to constant value '{}'", ident))
+                        } else {
+                            None
+                        }
+                    }
+
+                    None => Some(format!("cannot find value '{} in this scope", ident))
+                }
+            }
+
+            ExprKind::String(_) => {
+                Some("cannot assign to string literal".into())
+            }
+        };
+
+        match error_message {
+            Some(msg) => {
+                Error::new(ErrorKind::TypeError)
+                    .set_position(value.first_position())
+                    .set_message(msg)
+                    .into()
+            }
+
+            None => Ok(())
+        }
+    }
+
+
     fn drop_scope(&mut self) {
         /* Attempts to remove a scope from the local namespace */
 
@@ -194,6 +254,10 @@ impl<'a> TypeChecker<'a> {
 
         if let Err(ref mut es) = new_value_type {
             errors.append(es);
+        }
+
+        if let Err(e) = self.contains_prohibited_assignment(assigned_to) {
+            errors.push(e);
         }
 
         if !errors.is_empty() {
