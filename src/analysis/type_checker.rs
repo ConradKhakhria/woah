@@ -183,13 +183,6 @@ impl<'a> TypeChecker<'a> {
     }
 
 
-    fn scope_contains(&self, name: &str) -> bool {
-        /* Says whether the scope contains this value */
-
-        self.get_from_scope(name).is_some()
-    }
-
-
     /* Statement type-checking */
 
     fn get_statement_block_type(&mut self, statements: &'a [Statement]) -> Result<Rc<TypeKind>, Vec<Error>> {
