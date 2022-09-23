@@ -57,6 +57,7 @@ impl TypeKind {
             /* Special cases */
             (TypeKind::List(_), TypeKind::EmptyList) => generic_error,
             (_, TypeKind::ReportedError) => Ok(()),
+            (TypeKind::ReportedError, _) => Ok(()),
             (_, TypeKind::ClassName(_)|TypeKind::NoneType) => generic_error,
 
             /* All others */
