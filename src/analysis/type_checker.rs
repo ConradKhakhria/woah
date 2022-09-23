@@ -64,124 +64,6 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /* Misc */
-
-    fn add_to_scope(&mut self, value_name: &'a String, value_type: Rc<TypeKind>, constant: bool) {
-        /* Adds a new value to the scope */
-
-        let new_stack_frame_element = StackFrameElement {
-            value_name,
-            value_type,
-            constant
-        };
-
-        self.current_scope.last_mut().unwrap().push(new_stack_frame_element);
-    }
-
-
-    fn contains_prohibited_assignment(&self, value: &Expr) -> Result<(), Error> {
-        /* Returns an error if this value cannot be assigned to */
-
-        let error_message = match &value.expr_kind {
-            ExprKind::ArrayIndexing { array, .. } => {
-                return self.contains_prohibited_assignment(array);
-            }
-
-            ExprKind::ArrayLiteral { .. } => {
-                Some("array literals cannot be assigned to".to_string())
-            }
-
-            ExprKind::AttrRes { parent, .. } => {
-                return self.contains_prohibited_assignment(parent);
-            }
-
-            ExprKind::Compound { .. }|ExprKind::Unary { .. } => {
-                Some("expressions of this kind cannot be assigned to".into())
-            }
-
-            ExprKind::Float(_)|ExprKind::Integer(_) => {
-                Some("numeric literals cannot be assigned to".into())
-            }
-
-            ExprKind::FunctionCall { .. } => {
-                Some("function calls cannot be assigned to".into())
-            }
-
-            ExprKind::Identifier(ident) => {
-                match self.get_from_scope(ident) {
-                    Some(elem) => {
-                        if elem.constant {
-                            Some(format!("cannot assign to constant value '{}'", ident))
-                        } else {
-                            None
-                        }
-                    }
-
-                    // technically, a value that does not exist is not
-                    // a constant value.
-                    None => None
-                }
-            }
-
-            ExprKind::String(_) => {
-                Some("cannot assign to string literal".into())
-            }
-        };
-
-        match error_message {
-            Some(msg) => {
-                Error::new(ErrorKind::TypeError)
-                    .set_position(value.first_position())
-                    .set_message(msg)
-                    .into()
-            }
-
-            None => Ok(())
-        }
-    }
-
-
-    fn drop_scope(&mut self) {
-        /* Attempts to remove a scope from the local namespace */
-
-        self.current_scope.pop().unwrap(); // panics if None
-    }
-
-
-    fn get_from_scope(&self, name: &str) -> Option<&StackFrameElement<'a>> {
-        /* Attempts to get a value from the scope */
-
-        for scope in self.current_scope.iter() {
-            for value in scope.iter() {
-                if name == value.value_name {
-                    return Some(value)
-                }
-            }
-        }
-
-        None
-    }
-
-
-    fn is_final_statement(&self) -> bool {
-        /* Determines whether we are currently in the final statement */
-
-        for res in self.final_statement_stack.iter() {
-            if !*res {
-                return false;
-            }
-        }
-
-        true
-    }
-
-
-    fn new_scope(&mut self) {
-        /* Creates a new scope */
-
-        self.current_scope.push(vec![]);
-    }
-
 
     /* Statement type-checking */
 
@@ -968,5 +850,124 @@ impl<'a> TypeChecker<'a> {
 
             _ => unreachable!()
         }
+    }
+
+
+    /* Misc */
+
+    fn add_to_scope(&mut self, value_name: &'a String, value_type: Rc<TypeKind>, constant: bool) {
+        /* Adds a new value to the scope */
+
+        let new_stack_frame_element = StackFrameElement {
+            value_name,
+            value_type,
+            constant
+        };
+
+        self.current_scope.last_mut().unwrap().push(new_stack_frame_element);
+    }
+
+
+    fn contains_prohibited_assignment(&self, value: &Expr) -> Result<(), Error> {
+        /* Returns an error if this value cannot be assigned to */
+
+        let error_message = match &value.expr_kind {
+            ExprKind::ArrayIndexing { array, .. } => {
+                return self.contains_prohibited_assignment(array);
+            }
+
+            ExprKind::ArrayLiteral { .. } => {
+                Some("array literals cannot be assigned to".to_string())
+            }
+
+            ExprKind::AttrRes { parent, .. } => {
+                return self.contains_prohibited_assignment(parent);
+            }
+
+            ExprKind::Compound { .. }|ExprKind::Unary { .. } => {
+                Some("expressions of this kind cannot be assigned to".into())
+            }
+
+            ExprKind::Float(_)|ExprKind::Integer(_) => {
+                Some("numeric literals cannot be assigned to".into())
+            }
+
+            ExprKind::FunctionCall { .. } => {
+                Some("function calls cannot be assigned to".into())
+            }
+
+            ExprKind::Identifier(ident) => {
+                match self.get_from_scope(ident) {
+                    Some(elem) => {
+                        if elem.constant {
+                            Some(format!("cannot assign to constant value '{}'", ident))
+                        } else {
+                            None
+                        }
+                    }
+
+                    // technically, a value that does not exist is not
+                    // a constant value.
+                    None => None
+                }
+            }
+
+            ExprKind::String(_) => {
+                Some("cannot assign to string literal".into())
+            }
+        };
+
+        match error_message {
+            Some(msg) => {
+                Error::new(ErrorKind::TypeError)
+                    .set_position(value.first_position())
+                    .set_message(msg)
+                    .into()
+            }
+
+            None => Ok(())
+        }
+    }
+
+
+    fn drop_scope(&mut self) {
+        /* Attempts to remove a scope from the local namespace */
+
+        self.current_scope.pop().unwrap(); // panics if None
+    }
+
+
+    fn get_from_scope(&self, name: &str) -> Option<&StackFrameElement<'a>> {
+        /* Attempts to get a value from the scope */
+
+        for scope in self.current_scope.iter() {
+            for value in scope.iter() {
+                if name == value.value_name {
+                    return Some(value)
+                }
+            }
+        }
+
+        None
+    }
+
+
+    fn is_final_statement(&self) -> bool {
+        /* Determines whether we are currently in the final statement */
+
+        for res in self.final_statement_stack.iter() {
+            if !*res {
+                return false;
+            }
+        }
+
+        true
+    }
+
+
+    fn new_scope(&mut self) {
+        /* Creates a new scope */
+
+        self.current_scope.push(vec![]);
     }
 }
