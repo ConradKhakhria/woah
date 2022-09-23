@@ -391,7 +391,7 @@ impl<'a> TypeChecker<'a> {
         let determined_value_type = self.get_expression_type(value)?;
 
         if let Some(value_type) = value_type {
-            if *value_type == determined_value_type {
+            if let Err(e) = value_type.can_assign(&determined_value_type, value.first_position()) {
                 self.current_scope.last_mut().unwrap().push(
                     StackFrameElement {
                         value_name,
@@ -400,15 +400,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 );
 
-                return Error::new(ErrorKind::TypeError)
-                            .set_position(statement.first_position())
-                            .set_message(format!(
-                                "value '{}' expected type {} but received {}",
-                                value_name,
-                                value_type,
-                                determined_value_type
-                            ))
-                            .into();
+                return e.into();
             }
         }
 
