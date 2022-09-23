@@ -137,7 +137,7 @@ impl Module {
                         .into();
         }
 
-        if line.line_tokens[1].to_string().to_lowercase() != self.module_path.last().unwrap().to_lowercase() {
+        if line.line_tokens[1].to_string() != *self.module_path.last().unwrap() {
             return Error::new(ErrorKind::SyntaxError)
                         .set_position(line.first_position())
                         .set_message("the module name must be the same as the filename")
