@@ -3,7 +3,7 @@ use crate::parse::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-
+#[derive(Debug)]
 struct StackFrameElement<'a> {
     value_name: &'a String,
     value_type: Rc<TypeKind>,
@@ -102,7 +102,9 @@ impl<'a> TypeChecker<'a> {
                         }
                     }
 
-                    None => Some(format!("cannot find value '{} in this scope", ident))
+                    // technically, a value that does not exist is not
+                    // a constant value.
+                    None => None
                 }
             }
 
@@ -388,7 +390,20 @@ impl<'a> TypeChecker<'a> {
             _ => unreachable!()
         }
 
-        let determined_value_type = self.get_expression_type(value)?;
+        let determined_value_type = match self.get_expression_type(value) {
+            Ok(tp) => tp,
+            Err(errors) => {
+                self.current_scope.last_mut().unwrap().push(
+                    StackFrameElement {
+                        value_name,
+                        value_type: TypeKind::ReportedError.rc(),
+                        constant: *constant
+                    }
+                );
+
+                return Err(errors);
+            }
+        };
 
         if let Some(value_type) = value_type {
             if let Err(e) = value_type.can_assign(&determined_value_type, value.first_position()) {
@@ -856,7 +871,7 @@ impl<'a> TypeChecker<'a> {
                                 Error::new(ErrorKind::TypeError)
                                     .set_position(function.first_position())
                                     .set_message(format!(
-                                        "function takes {} but received {}",
+                                        "function takes {} argument but received {}",
                                         defined_arg_types.len(),
                                         supplied_arg_types.len()
                                     ))
