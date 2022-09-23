@@ -11,20 +11,32 @@ struct StackFrameElement<'a> {
 }
 
 
-struct TypeChecker<'a> {
+pub struct TypeChecker<'a> {
     modules: &'a HashMap<String, Module>,
-    current_function: &'a Function,
-    current_module: &'a Module,
     current_scope: Vec<Vec<StackFrameElement<'a>>>,
     final_statement_stack: Vec<bool>
 }
 
 
 impl<'a> TypeChecker<'a> {
-    fn check_function_types(&mut self) -> Result<(), Vec<Error>> {
+    
+    /* Public interfaces */
+
+    pub fn new(modules: &'a HashMap<String, Module>) -> Self {
+        /* Creates a new type checker */
+
+        TypeChecker {
+            modules,
+            current_scope: vec![ vec![] ],
+            final_statement_stack: vec![]
+        }
+    }
+
+
+    pub fn check_function_types(&mut self, function: &'a Function) -> Result<(), Vec<Error>> {
         /* Checks the types of a function */
 
-        for arg in self.current_function.args.iter() {
+        for arg in function.args.iter() {
             self.add_to_scope(
                 &arg.arg_name,
                 arg.arg_type.clone(), 
@@ -32,17 +44,17 @@ impl<'a> TypeChecker<'a> {
             );
         }
     
-        let given_ret_type = self.current_function.return_type.clone();
-        let determined_ret_type = self.get_statement_block_type(&self.current_function.body)?;
+        let given_ret_type = function.return_type.clone();
+        let determined_ret_type = self.get_statement_block_type(&function.body)?;
     
         if let TypeKind::NoneType = &*given_ret_type {
             Ok(())
         } else if given_ret_type != determined_ret_type {
             Error::new(ErrorKind::TypeError)
-                        .set_position(self.current_function.first_position())
+                        .set_position(function.first_position())
                         .set_message(format!(
                             "function '{}' expects to return {} but in fact returns {}",
-                            &self.current_function.name,
+                            &function.name,
                             given_ret_type,
                             determined_ret_type
                         ))
@@ -801,6 +813,8 @@ impl<'a> TypeChecker<'a> {
         match op.as_str() {
             "+"|"-"|"*"|"/" => {
                 match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::ReportedError, _) => Ok(TypeKind::ReportedError.rc()),
+                    (_, TypeKind::ReportedError) => Ok(TypeKind::ReportedError.rc()),
                     (TypeKind::Float, TypeKind::Float) => Ok(TypeKind::Float.rc()),
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     (l, r) => {
@@ -819,6 +833,8 @@ impl<'a> TypeChecker<'a> {
 
             "%" => {
                 match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::ReportedError, _) => Ok(TypeKind::ReportedError.rc()),
+                    (_, TypeKind::ReportedError) => Ok(TypeKind::ReportedError.rc()),
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     _ => Error::new(ErrorKind::TypeError)
                             .set_position(left.first_position())
@@ -829,6 +845,8 @@ impl<'a> TypeChecker<'a> {
 
             _ => { // comparison operators
                 match (&*left_type.unwrap(), &*right_type.unwrap()) {
+                    (TypeKind::ReportedError, _) => Ok(TypeKind::ReportedError.rc()),
+                    (_, TypeKind::ReportedError) => Ok(TypeKind::ReportedError.rc()),
                     (TypeKind::Float, TypeKind::Float) => Ok(TypeKind::Float.rc()),
                     (TypeKind::Int, TypeKind::Int) => Ok(TypeKind::Int.rc()),
                     (l, r) => {
@@ -957,41 +975,5 @@ impl<'a> TypeChecker<'a> {
 
             _ => unreachable!()
         }
-    }
-}
-
-pub fn check_types(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
-    /* Checks the types of all modules */
-
-    let mut errors = vec![];
-
-    for module in modules.values() {
-        for function_collection in [module.instance_methods(), module.module_methods()] {
-            for function in function_collection.values() {
-                let mut type_checker = TypeChecker {
-                    modules,
-                    current_module: module,
-                    current_function: function,
-                    current_scope: vec![ vec![] ],
-                    final_statement_stack: vec![]
-                };
-
-                if let Err(es) = type_checker.check_function_types() {
-                    for error in es {
-                        errors.push(
-                            error
-                                .set_line(module.raw_lines())
-                                .set_filename(module.filename())
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
     }
 }
