@@ -971,5 +971,9 @@ pub fn check_types(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> 
         }
     }
 
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
