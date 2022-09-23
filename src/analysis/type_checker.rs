@@ -32,21 +32,24 @@ impl<'a> TypeChecker<'a> {
             );
         }
     
-        let ret_type = self.get_statement_block_type(&self.current_function.body)?;
+        let given_ret_type = self.current_function.return_type.clone();
+        let determined_ret_type = self.get_statement_block_type(&self.current_function.body)?;
     
-        if ret_type != self.current_function.return_type.clone() {
-            return Error::new(ErrorKind::TypeError)
+        if let TypeKind::NoneType = &*given_ret_type {
+            Ok(())
+        } else if given_ret_type != determined_ret_type {
+            Error::new(ErrorKind::TypeError)
                         .set_position(self.current_function.first_position())
                         .set_message(format!(
                             "function '{}' expects to return {} but in fact returns {}",
                             &self.current_function.name,
-                            &self.current_function.return_type,
-                            ret_type
+                            given_ret_type,
+                            determined_ret_type
                         ))
-                        .into();
+                        .into()
+        } else {
+            Ok(())
         }
-    
-        Ok(()) 
     }
 
     /* Misc */
@@ -270,7 +273,7 @@ impl<'a> TypeChecker<'a> {
         let new_value_type = new_value_type.unwrap();
 
         match assigned_to_type.can_assign(&new_value_type, new_value.first_position()) {
-            Ok(()) => Ok(assigned_to_type.clone()),
+            Ok(()) => Ok(TypeKind::NoneType.rc()),
             Err(e) => e.into()
         }
     }
