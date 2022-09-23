@@ -20,7 +20,7 @@ pub enum ErrorKind {
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("woah:: {} ", self.error_kind);
+        let mut string = format!("woah : {} ", self.error_kind);
 
         string = format!("{}{}", string,
             match (&self.filename, &self.position) {
