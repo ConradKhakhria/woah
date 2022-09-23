@@ -727,7 +727,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         if errors.is_empty() {
-            Ok(first_elem_type)
+            Ok(TypeKind::List(first_elem_type).rc())
         } else {
             Err(errors)
         }
