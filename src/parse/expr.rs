@@ -5,22 +5,6 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum ExprKind {
-    Compound {
-        operator: String,
-        left: Box<Expr>,
-        right: Box<Expr>
-    },
-
-    Unary {
-        operator: String,
-        operand: Box<Expr>
-    },
-
-    FunctionCall {
-        function: Box<Expr>,
-        args: Vec<Expr>
-    },
-
     ArrayIndexing {
         array: Box<Expr>,
         index: Box<Expr>
@@ -35,13 +19,29 @@ pub enum ExprKind {
         attr_name: String
     },
 
-    String(String),
-
-    Integer(i64),
+    Compound {
+        operator: String,
+        left: Box<Expr>,
+        right: Box<Expr>
+    },
 
     Float(f64),
 
+    FunctionCall {
+        function: Box<Expr>,
+        args: Vec<Expr>
+    },
+
+    Integer(i64),
+
     Identifier(String),
+
+    String(String),
+
+    Unary {
+        operator: String,
+        operand: Box<Expr>
+    },
 }
 
 #[derive(Debug)]

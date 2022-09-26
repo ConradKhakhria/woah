@@ -10,13 +10,13 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Function {
-    pub public: bool,
-    pub variable_instance_method: Option<bool>,
-    pub name: String,
     pub args: Vec<Argument>,
-    pub return_type: Rc<TypeKind>,
     pub body: Vec<Statement>,
+    pub name: String,
     pub positions: [(usize, usize); 2],
+    pub public: bool,
+    pub return_type: Rc<TypeKind>,
+    pub variable_instance_method: Option<bool>,
 }
 
 
