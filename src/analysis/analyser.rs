@@ -3,6 +3,7 @@ use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
 
+
 pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
    /* Statically analyses a program
     *
