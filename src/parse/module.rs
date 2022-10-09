@@ -14,7 +14,7 @@ pub enum ModuleType {
 }
 
 
-#[derive(Debug, Getters)]
+#[derive(Debug)]
 pub struct Module {
     filename: String,
     instance_methods: HashMap<String, Function>,
@@ -28,6 +28,64 @@ pub struct Module {
 
 
 impl Module {
+
+    /* Getters */
+
+    pub fn filename(&self) -> &String {
+        &self.filename
+    }
+
+
+    pub fn first_position(&self) -> (usize, usize) {
+        self.positions[0].clone()
+    }
+
+
+    pub fn instance_methods(&self) -> &HashMap<String, Function> {
+        &self.instance_methods
+    }
+
+
+    pub fn instance_methods_mut(&mut self) -> &mut HashMap<String, Function> {
+        &mut self.instance_methods
+    }
+
+
+    #[allow(dead_code)]
+    pub fn last_position(&self) -> (usize, usize) {
+        self.positions[1].clone()
+    }
+
+
+    pub fn module_methods(&self) -> &HashMap<String, Function> {
+        &self.module_methods
+    }
+
+
+    pub fn module_methods_mut(&mut self) -> &mut HashMap<String, Function> {
+        &mut self.module_methods
+    }
+
+
+    pub fn module_name(&self) -> &String {
+        &self.module_name
+    }
+
+
+    pub fn module_path(&self) -> &Vec<String> {
+        &self.module_path
+    }
+
+
+    pub fn module_type(&self) -> &ModuleType {
+        &self._module_type
+    }
+
+
+    pub fn raw_lines(&self) -> &Vec<String> {
+        &self.raw_lines
+    }
+
 
     /* Instantiation */
 
@@ -208,19 +266,5 @@ impl Module {
         }
 
         Ok(())
-    }
-
-
-    pub fn first_position(&self) -> (usize, usize) {
-        /* Gets the first position of a module */
-
-        self.positions[0].clone()
-    }
-
-    #[allow(dead_code)]
-    pub fn last_position(&self) -> (usize, usize) {
-        /* Gets the last position of a module */
-
-        self.positions[1].clone()
     }
 }
