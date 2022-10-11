@@ -11,7 +11,7 @@ struct StackFrameElement<'a> {
 }
 
 
-pub struct TypeChecker<'a> {
+struct TypeChecker<'a> {
     modules: &'a HashMap<String, Module>,
     current_scope: Vec<Vec<StackFrameElement<'a>>>,
     final_statement_stack: Vec<bool>
@@ -22,45 +22,13 @@ impl<'a> TypeChecker<'a> {
     
     /* Public interfaces */
 
-    pub fn new(modules: &'a HashMap<String, Module>) -> Self {
+    fn new(modules: &'a HashMap<String, Module>) -> Self {
         /* Creates a new type checker */
 
         TypeChecker {
             modules,
             current_scope: vec![ vec![] ],
             final_statement_stack: vec![]
-        }
-    }
-
-
-    pub fn check_function_types(&mut self, function: &'a Function) -> Result<(), Vec<Error>> {
-        /* Checks the types of a function */
-
-        for arg in function.args.iter() {
-            self.add_to_scope(
-                &arg.arg_name,
-                arg.arg_type.clone(), 
-                arg.arg_mutable
-            );
-        }
-    
-        let given_ret_type = function.return_type.clone();
-        let determined_ret_type = self.get_statement_block_type(&function.body)?;
-    
-        if let TypeKind::NoneType = &*given_ret_type {
-            Ok(())
-        } else if given_ret_type != determined_ret_type {
-            Error::new(ErrorKind::TypeError)
-                        .set_position(function.first_position())
-                        .set_message(format!(
-                            "function '{}' expects to return {} but in fact returns {}",
-                            &function.name,
-                            given_ret_type,
-                            determined_ret_type
-                        ))
-                        .into()
-        } else {
-            Ok(())
         }
     }
 
@@ -969,5 +937,39 @@ impl<'a> TypeChecker<'a> {
         /* Creates a new scope */
 
         self.current_scope.push(vec![]);
+    }
+}
+
+
+pub fn check_function_types(function: &Function, modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
+    /* Checks the types of a function */
+
+    let mut type_checker = TypeChecker::new(modules);
+
+    for arg in function.args.iter() {
+        type_checker.add_to_scope(
+            &arg.arg_name,
+            arg.arg_type.clone(), 
+            arg.arg_mutable
+        );
+    }
+
+    let given_ret_type = function.return_type.clone();
+    let determined_ret_type = type_checker.get_statement_block_type(&function.body)?;
+
+    if let TypeKind::NoneType = &*given_ret_type {
+        Ok(())
+    } else if given_ret_type != determined_ret_type {
+        Error::new(ErrorKind::TypeError)
+                    .set_position(function.first_position())
+                    .set_message(format!(
+                        "function '{}' expects to return {} but in fact returns {}",
+                        &function.name,
+                        given_ret_type,
+                        determined_ret_type
+                    ))
+                    .into()
+    } else {
+        Ok(())
     }
 }
