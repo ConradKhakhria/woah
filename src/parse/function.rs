@@ -5,7 +5,6 @@ use crate::parse::parse_type_kind;
 use crate::parse::Statement;
 use crate::parse::TypeKind;
 use crate::token::Token;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 
@@ -17,7 +16,6 @@ pub struct Function {
     pub positions: [(usize, usize); 2],
     pub public: bool,
     pub return_type: Rc<TypeKind>,
-    pub values_escape: HashMap<String, bool>,
     pub variable_instance_method: Option<bool>,
 }
 
@@ -52,7 +50,6 @@ impl Function {
             positions: [ line.first_position(), line.last_position() ],
             public: false,
             return_type: TypeKind::NoneType.rc(),
-            values_escape: HashMap::new(),
             variable_instance_method: None,
         };
 
