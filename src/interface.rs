@@ -28,7 +28,7 @@ impl Interface {
         self.collect_modules(&src_path)?;
 
         // statically analyse modules
-        analyse_program(&self.modules)?;
+        analyse_program(&mut self.modules)?;
 
         Ok(())
     }
