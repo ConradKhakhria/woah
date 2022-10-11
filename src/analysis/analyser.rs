@@ -1,10 +1,10 @@
-use crate::analysis::TypeChecker;
+use crate::analysis::check_function_types;
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
 
 
-pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Error>> {
+pub fn analyse_program(modules: &mut HashMap<String, Module>) -> Result<(), Vec<Error>> {
    /* Statically analyses a program
     *
     * analysis results contain
@@ -13,13 +13,12 @@ pub fn analyse_program(modules: &HashMap<String, Module>) -> Result<(), Vec<Erro
     * - errors
     */
 
-    let mut type_checker = TypeChecker::new(modules);
     let mut errors = vec![];
 
     for module in modules.values() {
         for function_collection in [module.instance_methods(), module.module_methods()] {
             for function in function_collection.values() {
-                if let Err(es) = type_checker.check_function_types(function) {
+                if let Err(es) = check_function_types(function, &modules) {
                     for error in es {
                         errors.push(
                             error.set_line(module.raw_lines())
