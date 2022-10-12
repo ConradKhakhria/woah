@@ -50,17 +50,17 @@ impl<'f> EscapeResult<'f> {
                     }
                 }
 
-                StatementType::Declare { value_name, value, .. } => {
+                StatementType::Declare { value, .. } => {
                     self.analyse_expression(value);
                 }
 
-                StatementType::IteratorForLoop { iterator_name, range, block } => {
+                StatementType::IteratorForLoop { range, block, .. } => {
                     self.analyse_expression(range);
                     self.analyse_statement_block(block);
                 }
 
-                StatementType::NumericRangeForLoop { iterator_name, start,
-                                                     end, step, block } => {
+                StatementType::NumericRangeForLoop { start, end,
+                                                     step, block, .. } => {
                     for num in [start, end, step] {
                         self.analyse_expression(num);
                     }
