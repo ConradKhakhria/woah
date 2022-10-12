@@ -1,4 +1,5 @@
 mod analysis;
+mod compile;
 mod error;
 mod interface;
 mod line;
@@ -8,14 +9,11 @@ mod token;
 
 fn main() {
     let mut interface = interface::Interface::new();
-    let command = std::env::args().nth(1);
+    let command = std::env::args().nth(1).expect("Liszp: please supply a command");
 
-    if command.is_none() {
-        panic!("Liszp: please supply a command");
-    }
-
-    let res = match command.unwrap().as_str() {
+    let res = match command.as_str() {
         "build" => interface.build(),
+        "new"   => interface.create_project(),
         c => panic!("Liszp: unknown command '{}'", c)
     };
 

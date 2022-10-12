@@ -2,6 +2,7 @@ use crate::analysis::analyse_program;
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
 
 
@@ -22,7 +23,7 @@ impl Interface {
         /* Builds a project (location and flags from std::env::args()) */
 
         // get modules
-        let root_dir_name = std::env::args().nth(2).unwrap_or(".".into());
+        let root_dir_name = env::args().nth(2).unwrap_or(".".into());
         let src_path = Self::get_source_path(&root_dir_name)?;
         
         self.collect_modules(&src_path)?;
@@ -34,29 +35,39 @@ impl Interface {
     }
 
 
-    /* Module and filesystem */
+    pub fn create_project(&mut self) -> Result<(), Vec<Error>> {
+        /* Creates a new project with a name specified in the args */
 
-    fn get_source_path(root_dir_name: &String) -> Result<PathBuf, Vec<Error>> {
-        /* Gets the path of the source directory */
+        let project_name = Self::get_project_name(env::args().nth(2))?;
+        let cwd = match env::current_dir() {
+            Ok(path) => path,
+            Err(e) => return Error::new(ErrorKind::FileSystemError)
+                                        .set_message(e.to_string())
+                                        .into()
+        };
 
-        let mut root_path = PathBuf::from(root_dir_name);
-        root_path.push("src");
+        // directory paths
+        let root_path = cwd.join(project_name);
+        let src_path = root_path.join("src");
+        let target_path = root_path.join("target");
+        let generated_c_path = target_path.join("generated_c");
 
-        match std::fs::metadata(&root_path) {
-            Ok(_) => Ok(root_path),
+        let mut builder = std::fs::DirBuilder::new();
+        builder.recursive(true);
 
-            Err(e) => {
-                if let std::io::ErrorKind::NotFound = e.kind() {
-                    Error::new(ErrorKind::FileSystemError)
-                        .set_message("the path provided is not a valid project directory")
-                        .into()   
-                } else {
-                    Ok(root_path)
-                }
+        for path in [&generated_c_path, &src_path] {
+            if builder.create(path).is_err() {
+                return Error::new(ErrorKind::FileSystemError)
+                            .set_message(format!("unable to create dir {}", path.display()))
+                            .into();
             }
         }
+
+        Ok(())
     }
 
+
+    /* Module and filesystem */
 
     fn collect_modules(&mut self, module_cursor: &PathBuf) -> Result<(), Vec<Error>> {
         /* Collects all modules in a project */
@@ -99,6 +110,49 @@ impl Interface {
             Ok(())
         } else {
             Err(errors)
+        }
+    }
+
+
+    fn get_project_name(possible_name: Option<String>) -> Result<String, Vec<Error>> {
+        /* Tests whether possible_name is a valid project name */
+
+        match possible_name {
+            Some(name) => {
+                if !name.chars().all(char::is_alphabetic) {
+                    return Error::new(ErrorKind::NameError)
+                                .set_message("your project's name can only consist of letters")
+                                .into();
+                }
+
+                Ok(name)
+            }
+
+            None => Error::new(ErrorKind::InterfaceError)
+                        .set_message("your new project needs a name")
+                        .into() 
+        }
+    }
+
+
+    fn get_source_path(root_dir_name: &String) -> Result<PathBuf, Vec<Error>> {
+        /* Gets the path of the source directory */
+
+        let mut root_path = PathBuf::from(root_dir_name);
+        root_path.push("src");
+
+        match std::fs::metadata(&root_path) {
+            Ok(_) => Ok(root_path),
+
+            Err(e) => {
+                if let std::io::ErrorKind::NotFound = e.kind() {
+                    Error::new(ErrorKind::FileSystemError)
+                        .set_message("the path provided is not a valid project directory")
+                        .into()   
+                } else {
+                    Ok(root_path)
+                }
+            }
         }
     }
 }
