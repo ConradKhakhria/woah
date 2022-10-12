@@ -16,7 +16,7 @@ impl Interface {
     }
 
 
-    /* User interface */
+    /* Interface */
 
     pub fn build(&mut self) -> Result<(), Vec<Error>> {
         /* Builds a project (location and flags from std::env::args()) */
