@@ -3,6 +3,7 @@ use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
 use std::env;
+use std::fs::File;
 use std::path::PathBuf;
 
 
@@ -38,16 +39,7 @@ impl Interface {
     pub fn create_project(&mut self) -> Result<(), Vec<Error>> {
         /* Creates a new project with a name specified in the args */
 
-        let project_name = Self::get_project_name(env::args().nth(2))?;
-        let cwd = match env::current_dir() {
-            Ok(path) => path,
-            Err(e) => return Error::new(ErrorKind::FileSystemError)
-                                        .set_message(e.to_string())
-                                        .into()
-        };
-
-        // directory paths
-        let root_path = cwd.join(project_name);
+        let root_path = Self::get_project_path(env::args().nth(2))?;
         let src_path = root_path.join("src");
         let target_path = root_path.join("target");
         let generated_c_path = target_path.join("generated_c");
@@ -59,6 +51,26 @@ impl Interface {
             if builder.create(path).is_err() {
                 return Error::new(ErrorKind::FileSystemError)
                             .set_message(format!("unable to create dir {}", path.display()))
+                            .into();
+            }
+        }
+
+        // The success of this is guaranteed by the checks in get_project_path()
+        let project_name = root_path.file_name().unwrap().to_str().unwrap();
+        let mut files_to_create = [
+            (src_path.join(project_name), "woah"),
+            (root_path.join("README"), "txt"),
+            (root_path.join(".gitignore"), "")
+        ];
+
+        for (file_to_create, file_extension) in files_to_create.iter_mut() {
+            if !file_extension.is_empty() {
+                file_to_create.set_extension(file_extension);
+            }
+
+            if let Err(e) = File::create(file_to_create) {
+                return Error::new(ErrorKind::FileSystemError)
+                            .set_message(e.to_string())
                             .into();
             }
         }
@@ -114,18 +126,47 @@ impl Interface {
     }
 
 
-    fn get_project_name(possible_name: Option<String>) -> Result<String, Vec<Error>> {
-        /* Tests whether possible_name is a valid project name */
+    fn get_project_path(possible_path: Option<String>) -> Result<PathBuf, Vec<Error>> {
+        /* Tests whether possible_path is a valid project path */
 
-        match possible_name {
+        let cwd = match env::current_dir() {
+            Ok(path) => path,
+            Err(e) => return Error::new(ErrorKind::FileSystemError)
+                                        .set_message(e.to_string())
+                                        .into()
+        };
+
+        match possible_path {
             Some(name) => {
-                if !name.chars().all(char::is_alphabetic) {
-                    return Error::new(ErrorKind::NameError)
-                                .set_message("your project's name can only consist of letters")
-                                .into();
-                }
+                let path = cwd.join(name);
 
-                Ok(name)
+                match path.file_name() {
+                    Some(name) => {
+                        match name.to_str() {
+                            Some(name) => {
+                                if !name.chars().all(char::is_alphabetic) {
+                                    Error::new(ErrorKind::NameError)
+                                        .set_message("your project's name can only consist of letters")
+                                        .into()
+                                } else if name.chars().next().unwrap().is_lowercase() {
+                                    Error::new(ErrorKind::NameError)
+                                        .set_message("your project's name must begin with an uppercase letter")
+                                        .into()
+                                } else {
+                                    Ok(path)
+                                }
+                            }
+
+                            None => Error::new(ErrorKind::FileSystemError)
+                                        .set_message("your project's name must be standard ASCII")
+                                        .into()
+                        }
+                    }
+
+                    None => Error::new(ErrorKind::FileSystemError)
+                                .set_message("Your project path needs a name")
+                                .into()
+                }
             }
 
             None => Error::new(ErrorKind::InterfaceError)
