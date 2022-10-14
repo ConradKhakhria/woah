@@ -8,12 +8,11 @@ mod token;
 
 
 fn main() {
-    let mut interface = interface::Interface::new();
     let command = std::env::args().nth(1).expect("Liszp: please supply a command");
 
     let res = match command.as_str() {
-        "build" => interface.build(),
-        "new"   => interface.create_project(),
+        "build" => interface::build(),
+        "new"   => interface::create_project(),
         c => panic!("Liszp: unknown command '{}'", c)
     };
 
