@@ -23,9 +23,11 @@ pub fn build() -> Result<(), Vec<Error>> {
 
     let static_analysis_results = analyse_program(&mut modules)?;
 
-    for module in modules.values() {
-        compile(&root_path, module, &static_analysis_results);
-    }
+    // for module in modules.values() {
+    //     compile(&root_path, module, &static_analysis_results);
+    // }
+
+    println!("cannot compile yet :/");
 
     Ok(())
 }
