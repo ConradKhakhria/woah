@@ -1,5 +1,4 @@
 use crate::analysis::analyse_program;
-use crate::compile::compile;
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
@@ -22,12 +21,6 @@ pub fn build() -> Result<(), Vec<Error>> {
     collect_modules(&src_path, &mut modules)?;
 
     let static_analysis_results = analyse_program(&mut modules)?;
-
-    // for module in modules.values() {
-    //     compile(&root_path, module, &static_analysis_results);
-    // }
-
-    println!("cannot compile yet :/");
 
     Ok(())
 }

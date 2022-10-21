@@ -1,5 +1,4 @@
 mod analysis;
-mod compile;
 mod error;
 mod interface;
 mod line;
