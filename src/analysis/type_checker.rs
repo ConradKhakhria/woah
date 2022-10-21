@@ -846,8 +846,8 @@ impl<'a> TypeChecker<'a> {
                 Some("array literals cannot be assigned to".to_string())
             }
 
-            ExprKind::ClassAttrRes { class_name, attr_name } => {
-                Some(format!("{}::{} cannot be assigned to", class_name, attr_name))
+            ExprKind::ClassAttrRes { class_path, attr_name } => {
+                Some(format!("{}::{} cannot be assigned to", class_path.last().unwrap(), attr_name))
             }
 
             ExprKind::Compound { .. }|ExprKind::Unary { .. } => {

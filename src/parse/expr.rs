@@ -16,7 +16,7 @@ pub enum ExprKind {
     },
 
     ClassAttrRes {
-        class_name: String,
+        class_path: Vec<String>,
         attr_name: String
     },
 
@@ -225,43 +225,45 @@ fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec
 fn parse_class_attr_res(tokens: &[Token]) -> ParseOption {
     /* Parses an attribute resolution */
 
-    if tokens.len() != 3 || tokens[1].to_string() != "::" {
+    if tokens.len() < 3 || tokens[tokens.len() - 2].to_string() != "::" {
         return None;
     }
 
-    let class_name = match &tokens[0] {
-        Token::Identifier { string, .. } => Ok(string.to_string()),
-        token => Error::new(ErrorKind::SyntaxError)
-                            .set_position(token.position())
-                            .set_message("Expected syntax <expression>::<name>")
-                            .into()
-    };
     let attr_name = match &tokens[2] {
-        Token::Identifier { string, .. } => Ok(string.to_string()),
-        token => Error::new(ErrorKind::SyntaxError)
-                .set_position(token.position())
-                .set_message("Expected syntax <expression>::<name>")
-                .into()
+        Token::Identifier { string, .. } => string.to_string(),
+        token => {
+            return Some(
+                Error::new(ErrorKind::SyntaxError)
+                    .set_position(token.position())
+                    .set_message("Expected syntax <module path>::<name>")
+                    .into()
+            )
+        }
     };
 
-    match (class_name, attr_name) {
-        (Ok(class_name), Ok(attr_name)) => {
-            Some(Ok(Expr {
-                expr_kind: ExprKind::ClassAttrRes { class_name, attr_name },
-                expr_type: None,
-                position: [
-                    tokens.first().unwrap().position(),
-                    tokens.last().unwrap().position()
-                ]
-            }))  
+    let mut class_path = vec![];
+    let error = Error::new(ErrorKind::SyntaxError)
+                    .set_message("Expected syntax <module name>::<attribute>");
+
+    for i in 0..(tokens.len() - 2) {
+        match &tokens[i] {
+            Token::Identifier { string, .. } => class_path.push(string.to_string()),
+            _ => return Some(error.set_position(tokens[i].position()).into())
         }
 
-        (Err(e1), Err(e2)) => Some(Err(vec![ e1, e2 ])),
-
-        (Err(e), _) => Some(e.into()),
-
-        (_, Err(e)) => Some(e.into())
+        if tokens[i + 1].to_string() != "::" {
+            return Some(error.set_position(tokens[i + 1].position()).into());
+        }
     }
+
+    Some(Ok(Expr {
+        expr_kind: ExprKind::ClassAttrRes { class_path, attr_name },
+        expr_type: None,
+        position: [
+            tokens.first().unwrap().position(),
+            tokens.last().unwrap().position()
+        ]
+    }))
 }
 
 
