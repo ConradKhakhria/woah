@@ -214,7 +214,7 @@ pub fn parse_type_annotation(tokens: &[Token], pos: (usize, usize)) -> Result<Ty
         }
 
         [Token::Identifier {..}, Token::Block { open_delim: "[", contents, .. }] => {
-            let name = if tokens[0].upper_case() {
+            let name = if tokens[0].is_upper_case() {
                 tokens[0].to_string()
             } else {
                 return Error::new(ErrorKind::SyntaxError)

@@ -134,7 +134,7 @@ fn parse_declare(line: &Line) -> Option<ParseResult> {
 
     let mut errors = Vec::new();
 
-    let value_name = if tokens[1].lower_case() {
+    let value_name = if tokens[1].is_lower_case() {
         tokens[1].to_string()
     } else {
         errors.push(
@@ -367,7 +367,7 @@ fn parse_for_loop(line: &Line) -> Option<ParseResult> {
         errors.push(format_err);
     }
 
-    let iterator_name = if tokens[1].lower_case() {
+    let iterator_name = if tokens[1].is_lower_case() {
         tokens[1].to_string()
     } else {
         errors.push(

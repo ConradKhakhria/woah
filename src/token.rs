@@ -37,13 +37,6 @@ pub enum Token<'s> {
 impl<'s> Token<'s> {
     /* User interface */
 
-    pub fn atom(&self) -> bool {
-        /* Returns whether the token is atomic */
-
-        if let Token::Block {..} = self { false } else { true }
-    }
-
-
     pub fn delim(&self) -> String {
         /* Returns whether the block's delimiter is equal to a supplied string */
 
@@ -54,13 +47,36 @@ impl<'s> Token<'s> {
     }
 
 
-    pub fn lower_case(&self) -> bool {
+    pub fn is_atom(&self) -> bool {
+        /* Returns whether the token is atomic */
+
+        if let Token::Block {..} = self { false } else { true }
+    }
+
+
+    pub fn is_lower_case(&self) -> bool {
         /* returns whether self begins with an lower case letter */
 
         match self {
             Token::Identifier { string, .. } => {
                 match string.chars().next() {
                     Some('a'..='z') => true,
+                    _ => false
+                }
+            },
+
+            _ => false
+        }
+    }
+
+
+    pub fn is_upper_case(&self) -> bool {
+        /* returns whether self begins with an upper case letter */
+
+        match self {
+            Token::Identifier { string, .. } => {
+                match string.chars().next() {
+                    Some('A'..='Z') => true,
                     _ => false
                 }
             },
@@ -111,22 +127,6 @@ impl<'s> Token<'s> {
         }
 
         slices
-    }
-
-
-    pub fn upper_case(&self) -> bool {
-        /* returns whether self begins with an upper case letter */
-
-        match self {
-            Token::Identifier { string, .. } => {
-                match string.chars().next() {
-                    Some('A'..='Z') => true,
-                    _ => false
-                }
-            },
-
-            _ => false
-        }
     }
 }
 

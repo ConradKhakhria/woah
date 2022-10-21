@@ -156,7 +156,7 @@ impl Function {
         index += 1;
 
         // get function name
-        if tokens[index].lower_case() {
+        if tokens[index].is_lower_case() {
             self.name = tokens[index].to_string();
         } else {
             errors.push(
@@ -294,7 +294,7 @@ impl Argument {
         }
 
         // arg name
-        let arg_name = if tokens[index].lower_case() {
+        let arg_name = if tokens[index].is_lower_case() {
             tokens[index].to_string()
         } else {
             return Error::new(ErrorKind::SyntaxError)
