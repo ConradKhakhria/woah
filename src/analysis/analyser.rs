@@ -1,16 +1,15 @@
 use crate::analysis::check_function_types;
-use crate::analysis::EscapeResult;
 use crate::error::*;
 use crate::parse::Module;
 use std::collections::HashMap;
 
 
-pub struct StaticAnalysisResults<'m> {
-    escape_analysis_results: HashMap<&'m String, EscapeResult<'m>>
+pub struct StaticAnalysisResults {
+
 }
 
 
-pub fn analyse_program<'m>(modules: &'m mut HashMap<String, Module>) -> Result<StaticAnalysisResults<'m>, Vec<Error>> {
+pub fn analyse_program<'m>(modules: &'m mut HashMap<String, Module>) -> Result<StaticAnalysisResults, Vec<Error>> {
    /* Statically analyses a program
     *
     * analysis results contain
@@ -19,16 +18,13 @@ pub fn analyse_program<'m>(modules: &'m mut HashMap<String, Module>) -> Result<S
     * - errors
     */
 
-    let mut escape_analysis_results = HashMap::new();
     let mut errors = vec![];
 
     for module in modules.values() {
         for function_collection in [module.instance_methods(), module.module_methods()] {
             for function in function_collection.values() {
                 match check_function_types(function, modules) {
-                    Ok(()) => {
-                        escape_analysis_results.insert(&function.name, EscapeResult::analyse_function(function));
-                    },
+                    Ok(()) => {},
 
                     Err(es) => {
                         for error in es {
@@ -44,7 +40,7 @@ pub fn analyse_program<'m>(modules: &'m mut HashMap<String, Module>) -> Result<S
     }
 
     if errors.is_empty() {
-        Ok(StaticAnalysisResults { escape_analysis_results })
+        Ok(StaticAnalysisResults {  })
     } else {
         Err(errors)
     }

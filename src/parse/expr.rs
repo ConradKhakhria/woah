@@ -15,8 +15,8 @@ pub enum ExprKind {
         elems: Vec<Expr>
     },
 
-    AttrRes {
-        parent: Box<Expr>,
+    ClassAttrRes {
+        class_name: String,
         attr_name: String
     },
 
@@ -36,6 +36,11 @@ pub enum ExprKind {
     Integer(i64),
 
     Identifier(String),
+
+    ObjectAttrRes {
+        parent: Box<Expr>,
+        attr_name: String 
+    },
 
     String(String),
 
@@ -69,7 +74,8 @@ impl Expr {
             parse_compound,
             parse_funcall,
             parse_indexing,
-            parse_attr_res
+            parse_class_attr_res,
+            parse_object_attr_res
         ];
     
         for option in parse_options {
@@ -216,46 +222,46 @@ fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec
 }
 
 
-fn parse_attr_res(tokens: &[Token]) -> ParseOption {
+fn parse_class_attr_res(tokens: &[Token]) -> ParseOption {
     /* Parses an attribute resolution */
 
-    if tokens.len() < 3 || tokens[tokens.len() - 2].to_string() != "." {
+    if tokens.len() != 3 || tokens[1].to_string() != "::" {
         return None;
     }
 
-    let mut errors = Vec::new();
-    let mut parent = Expr::from_tokens(&tokens[..tokens.len()-2], tokens[0].position());
-    let mut attr_name = match tokens.last().unwrap() {
+    let class_name = match &tokens[0] {
+        Token::Identifier { string, .. } => Ok(string.to_string()),
+        token => Error::new(ErrorKind::SyntaxError)
+                            .set_position(token.position())
+                            .set_message("Expected syntax <expression>::<name>")
+                            .into()
+    };
+    let attr_name = match &tokens[2] {
         Token::Identifier { string, .. } => Ok(string.to_string()),
         token => Error::new(ErrorKind::SyntaxError)
                 .set_position(token.position())
-                .set_message("Expected syntax <expression>.<name>")
+                .set_message("Expected syntax <expression>::<name>")
                 .into()
     };
 
-    if let Err(ref mut es) = parent {
-        errors.append(es);
-    }
+    match (class_name, attr_name) {
+        (Ok(class_name), Ok(attr_name)) => {
+            Some(Ok(Expr {
+                expr_kind: ExprKind::ClassAttrRes { class_name, attr_name },
+                expr_type: None,
+                position: [
+                    tokens.first().unwrap().position(),
+                    tokens.last().unwrap().position()
+                ]
+            }))  
+        }
 
-    if let Err(ref mut es) = attr_name {
-        errors.append(es);
-    }
+        (Err(e1), Err(e2)) => Some(Err(vec![ e1, e2 ])),
 
-    Some(if errors.is_empty() {
-        Ok(Expr {
-            expr_kind: ExprKind::AttrRes {
-                parent: Box::new(parent.unwrap()),
-                attr_name: attr_name.unwrap()
-            },
-            expr_type: None,
-            position: [
-                tokens.first().unwrap().position(),
-                tokens.last().unwrap().position()
-            ]
-        })
-    } else {
-        Err(errors)
-    })
+        (Err(e), _) => Some(e.into()),
+
+        (_, Err(e)) => Some(e.into())
+    }
 }
 
 
@@ -410,4 +416,47 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
             ]
         }
     ))
+}
+
+
+fn parse_object_attr_res(tokens: &[Token]) -> ParseOption {
+    /* Parses an object attribute resolution */
+
+    if tokens.len() < 3 || tokens[tokens.len() - 2].to_string() != "." {
+        return None;
+    }
+
+    let mut errors = Vec::new();
+    let mut parent = Expr::from_tokens(&tokens[..tokens.len()-2], tokens[0].position());
+    let mut attr_name = match tokens.last().unwrap() {
+        Token::Identifier { string, .. } => Ok(string.to_string()),
+        token => Error::new(ErrorKind::SyntaxError)
+                .set_position(token.position())
+                .set_message("Expected syntax <expression>.<name>")
+                .into()
+    };
+
+    if let Err(ref mut es) = parent {
+        errors.append(es);
+    }
+
+    if let Err(ref mut es) = attr_name {
+        errors.append(es);
+    }
+
+    Some(if errors.is_empty() {
+        Ok(Expr {
+            expr_kind: ExprKind::ObjectAttrRes {
+                parent: Box::new(parent.unwrap()),
+                attr_name: attr_name.unwrap()
+            },
+            expr_type: None,
+            position: [
+                tokens.first().unwrap().position(),
+                tokens.last().unwrap().position()
+            ]
+        })
+    } else {
+        Err(errors)
+    })
 }

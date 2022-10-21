@@ -466,10 +466,6 @@ impl<'a> TypeChecker<'a> {
                 self.get_array_literal_type(elems)
             }
 
-            ExprKind::AttrRes { parent, attr_name } => {
-                self.get_attr_res_type(parent, attr_name)
-            }
-
             ExprKind::Compound { operator, left, right } => {
                 self.get_compound_type(operator, [left, right])
             }
@@ -497,6 +493,8 @@ impl<'a> TypeChecker<'a> {
             ExprKind::Unary { operator, operand } => {
                 self.get_unary_type(operator, operand)
             }
+
+            _ => unimplemented!()
         }
     }
 
@@ -848,8 +846,8 @@ impl<'a> TypeChecker<'a> {
                 Some("array literals cannot be assigned to".to_string())
             }
 
-            ExprKind::AttrRes { parent, .. } => {
-                return self.contains_prohibited_assignment(parent);
+            ExprKind::ClassAttrRes { class_name, attr_name } => {
+                Some(format!("{}::{} cannot be assigned to", class_name, attr_name))
             }
 
             ExprKind::Compound { .. }|ExprKind::Unary { .. } => {
@@ -878,6 +876,10 @@ impl<'a> TypeChecker<'a> {
                     // a constant value.
                     None => None
                 }
+            }
+
+            ExprKind::ObjectAttrRes { parent, .. } => {
+                return self.contains_prohibited_assignment(parent);
             }
 
             ExprKind::String(_) => {
