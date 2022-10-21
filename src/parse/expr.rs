@@ -59,38 +59,6 @@ pub struct Expr {
 
 
 impl Expr {
-    pub fn from_tokens(tokens: &[Token], pos: (usize, usize)) -> Result<Self, Vec<Error>> {
-        /* Parses an expression from a list of tokens */
-
-        if tokens.is_empty() {
-            return Error::new(ErrorKind::SyntaxError)
-                    .set_position(pos)
-                    .set_message("Received empty expression")
-                    .into();
-        }
-
-        let parse_options = [
-            parse_atomic_expression,
-            parse_compound,
-            parse_funcall,
-            parse_indexing,
-            parse_class_attr_res,
-            parse_object_attr_res
-        ];
-    
-        for option in parse_options {
-            if let Some(expr) = option(tokens) {
-                return expr;
-            }
-        }
-    
-        Error::new(ErrorKind::SyntaxError)
-            .set_position(tokens[0].position())
-            .set_message("Unrecognised syntax in expression")
-            .into()
-    }
-
-
     pub fn first_position(&self) -> (usize, usize) {
         /* Gets the first position of the expression */
 
@@ -109,6 +77,38 @@ impl Expr {
 /* Parsing */
 
 type ParseOption = Option<Result<Expr, Vec<Error>>>;
+
+
+pub fn parse_expr(tokens: &[Token], pos: (usize, usize)) -> Result<Expr, Vec<Error>> {
+    /* Parses an expression from a list of tokens */
+
+    if tokens.is_empty() {
+        return Error::new(ErrorKind::SyntaxError)
+                .set_position(pos)
+                .set_message("Received empty expression")
+                .into();
+    }
+
+    let parse_options = [
+        parse_atomic_expression,
+        parse_compound,
+        parse_funcall,
+        parse_indexing,
+        parse_class_attr_res,
+        parse_object_attr_res
+    ];
+
+    for option in parse_options {
+        if let Some(expr) = option(tokens) {
+            return expr;
+        }
+    }
+
+    Error::new(ErrorKind::SyntaxError)
+        .set_position(tokens[0].position())
+        .set_message("Unrecognised syntax in expression")
+        .into()
+}
 
 
 fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
@@ -162,7 +162,7 @@ fn parse_atomic_expression(tokens: &[Token]) -> ParseOption {
 
         Token::Block { open_delim, contents, .. } => {
             return if *open_delim == "(" {
-                 Some(Expr::from_tokens(&contents[..], tokens[0].position()))
+                 Some(parse_expr(&contents[..], tokens[0].position()))
             } else if *open_delim == "[" {
                 Some(match parse_array(&contents[..], tokens[0].position()) {
                     Ok(es) => Ok(Expr {
@@ -208,7 +208,7 @@ fn parse_array(contents: &[Token], pos: (usize, usize)) -> Result<Vec<Expr>, Vec
     let mut errors = Vec::new();
     
     for (start, end) in Token::split_tokens(contents, |t| t.to_string() == ",") {
-        match Expr::from_tokens(&contents[start..end], pos) {
+        match parse_expr(&contents[start..end], pos) {
             Ok(expr) => values.push(expr),
             Err(ref mut es) => errors.append(es)
         }
@@ -276,8 +276,8 @@ fn parse_compound(tokens: &[Token]) -> ParseOption {
         for op in operator_list {
             for i in 1..(tokens.len() - 1) {
                 if tokens[i].to_string() == op {
-                    let left = Expr::from_tokens(&tokens[..i], tokens[0].position());
-                    let right = Expr::from_tokens(&tokens[i+1..], tokens[i+1].position());
+                    let left = parse_expr(&tokens[..i], tokens[0].position());
+                    let right = parse_expr(&tokens[i+1..], tokens[i+1].position());
     
                     return Some(
                         if left.is_ok() && right.is_ok() {
@@ -308,7 +308,7 @@ fn parse_compound(tokens: &[Token]) -> ParseOption {
     }
 
     if tokens[0].to_string() == "-" && tokens.len() > 1 {
-        Some(if let Ok(expr) = Expr::from_tokens(&tokens[1..], tokens[1].position()) {
+        Some(if let Ok(expr) = parse_expr(&tokens[1..], tokens[1].position()) {
             Ok(Expr {
                 expr_kind: ExprKind::Unary {
                     operator: String::from("-"),
@@ -346,7 +346,7 @@ fn parse_funcall(tokens: &[Token]) -> ParseOption {
                 let slices = Token::split_tokens(&contents[..], |t| t.to_string() == ",");
 
                 for (start, end) in slices {
-                    match Expr::from_tokens(&contents[start..end], contents[start].position()) {
+                    match parse_expr(&contents[start..end], contents[start].position()) {
                         Ok(expr) => exprs.push(expr),
                         Err(ref mut es) => errors.append(es)
                     }
@@ -364,7 +364,7 @@ fn parse_funcall(tokens: &[Token]) -> ParseOption {
         _ => return None
     };
 
-    let function = match Expr::from_tokens(&tokens[..tokens_len-1], tokens[0].position()) {
+    let function = match parse_expr(&tokens[..tokens_len-1], tokens[0].position()) {
         Ok(fb) => Box::new(fb),
         err => return Some(err)
     };
@@ -390,7 +390,7 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
     let index = match tokens.last().unwrap() {
         Token::Block { contents, open_delim, .. } => {
             if *open_delim == "[" && contents.len() > 0 {
-                match Expr::from_tokens(contents, contents[0].position()) {
+                match parse_expr(contents, contents[0].position()) {
                     Ok(expr) => Box::new(expr),
                     err => return Some(err)
                 }
@@ -401,7 +401,7 @@ fn parse_indexing(tokens: &[Token]) -> ParseOption {
         _ => return None
     };
 
-    let array = match Expr::from_tokens(&tokens[..tokens_len-1], tokens[0].position()) {
+    let array = match parse_expr(&tokens[..tokens_len-1], tokens[0].position()) {
         Ok(arr) => Box::new(arr),
         err => return Some(err)
     };
@@ -427,7 +427,7 @@ fn parse_object_attr_res(tokens: &[Token]) -> ParseOption {
     }
 
     let mut errors = Vec::new();
-    let mut parent = Expr::from_tokens(&tokens[..tokens.len()-2], tokens[0].position());
+    let mut parent = parse_expr(&tokens[..tokens.len()-2], tokens[0].position());
     let mut attr_name = match tokens.last().unwrap() {
         Token::Identifier { string, .. } => Ok(string.to_string()),
         token => Error::new(ErrorKind::SyntaxError)

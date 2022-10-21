@@ -2,6 +2,7 @@ use crate::error::*;
 use crate::line::Line;
 use crate::parse::Expr;
 use crate::parse::ExprKind;
+use crate::parse::parse_expr;
 use crate::parse::parse_type_kind;
 use crate::parse::TypeKind;
 use crate::token::Token;
@@ -172,7 +173,7 @@ fn parse_declare(line: &Line) -> Option<ParseResult> {
         None
     };
 
-    let mut value = Expr::from_tokens(
+    let mut value = parse_expr(
         &tokens[assign_index + 1..],
         tokens[assign_index + 1].position()
     );
@@ -225,8 +226,8 @@ fn parse_assignment(line: &Line) -> Option<ParseResult> {
         }
     }
 
-    let mut assigned_to = Expr::from_tokens(&tokens[..eq_index], tokens[0].position());
-    let mut new_value = Expr::from_tokens(&tokens[eq_index+1..], tokens[eq_index + 1].position());
+    let mut assigned_to = parse_expr(&tokens[..eq_index], tokens[0].position());
+    let mut new_value = parse_expr(&tokens[eq_index+1..], tokens[eq_index + 1].position());
 
     if let Err(ref mut es) = &mut assigned_to {
         errors.append(es);
@@ -268,7 +269,7 @@ fn parse_conditional_block(conditionals: Vec<&Line>, else_statement: Option<&Lin
     ];
 
     for conditional in conditionals {
-        let condition = Expr::from_tokens(
+        let condition = parse_expr(
             &conditional.line_tokens[1..],
             conditional.first_position()
         );
@@ -327,7 +328,7 @@ fn parse_raw_expr(line: &Line) -> Option<ParseResult> {
                         .into());
     }
 
-    Some(match Expr::from_tokens(tokens, tokens[0].position()) {
+    Some(match parse_expr(tokens, tokens[0].position()) {
         Ok(expr) => Ok(Statement {
             stmt_type: StatementType::RawExpr { expr },
             positions: [
@@ -439,15 +440,15 @@ fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec
 
     match Token::split_tokens(tokens, |t| t.to_string() == ":").as_slice() {
         [_] => {
-            match Expr::from_tokens(tokens, tokens[0].position()) {
+            match parse_expr(tokens, tokens[0].position()) {
                 Ok(range) => Ok(Err(range)),
                 Err(es) => Err(es)
             }
         },
 
         [start, end] => {
-            let start = Expr::from_tokens(&tokens[start.0..start.1], tokens[0].position())?;
-            let end = Expr::from_tokens(&tokens[end.0..end.1], tokens[0].position())?;
+            let start = parse_expr(&tokens[start.0..start.1], tokens[0].position())?;
+            let end = parse_expr(&tokens[end.0..end.1], tokens[0].position())?;
             let step = Expr {
                 expr_kind: ExprKind::Integer(1),
                 expr_type: Some(TypeKind::Int.rc()),
@@ -461,9 +462,9 @@ fn parse_for_loop_range(tokens: &[Token]) -> Result<Result<[Expr; 3], Expr>, Vec
         },
 
         [start, end, step] => {
-            let start = Expr::from_tokens(&tokens[start.0..start.1], tokens[0].position())?;
-            let end = Expr::from_tokens(&tokens[end.0..end.1], tokens[0].position())?;
-            let step = Expr::from_tokens(&tokens[step.0..step.1], tokens[0].position())?;
+            let start = parse_expr(&tokens[start.0..start.1], tokens[0].position())?;
+            let end = parse_expr(&tokens[end.0..end.1], tokens[0].position())?;
+            let step = parse_expr(&tokens[step.0..step.1], tokens[0].position())?;
 
             Ok(Ok([start, end, step]))
         },
@@ -495,7 +496,7 @@ fn parse_return(line: &Line) -> Option<ParseResult> {
     let value = match &tokens[1..] {
         [] => None,
         ts => {
-            match Expr::from_tokens(ts, ts[0].position()) {
+            match parse_expr(ts, ts[0].position()) {
                 Ok(expr) => Some(expr),
                 Err(es) => return Some(Err(es))
             }
@@ -531,7 +532,7 @@ fn parse_while_loop(line: &Line) -> Option<ParseResult> {
         );
     }
 
-    let mut condition = Expr::from_tokens(&tokens[1..], tokens[1].position());
+    let mut condition = parse_expr(&tokens[1..], tokens[1].position());
     let mut block = parse_statement_block(&line.line_derivs);
 
     if let Err(ref mut es) = condition {

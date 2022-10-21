@@ -6,6 +6,7 @@ mod typekind;
 
 pub use expr::Expr as Expr;
 pub use expr::ExprKind as ExprKind;
+pub use expr::parse_expr;
 
 pub use function::Argument as Argument;
 pub use function::Function as Function;
