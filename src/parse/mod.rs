@@ -10,6 +10,7 @@ pub use expr::parse_expr;
 
 pub use function::Argument as Argument;
 pub use function::Function as Function;
+pub use function::parse_function as parse_function;
 
 pub use module::Module as Module;
 

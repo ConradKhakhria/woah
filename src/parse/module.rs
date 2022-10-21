@@ -2,8 +2,8 @@ use crate::error::*;
 use crate::line::create_lines;
 use crate::line::Line;
 use crate::parse::Function;
+use crate::parse::parse_function;
 use crate::token::tokenise;
-use derive_getters::Getters;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -205,7 +205,7 @@ impl Module {
         let mut errors = vec![];
 
         for line in line.line_derivs.iter() {
-            match Function::parse_function(line) {
+            match parse_function(line) {
                 Ok(f) => {
                     let method_category = if f.variable_instance_method.is_some() {
                         &mut self.instance_methods

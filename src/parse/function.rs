@@ -39,44 +39,6 @@ impl Function {
 
     /* Parse function */
 
-    pub fn parse_function(line: &Line) -> Result<Function, Vec<Error>> {
-        /* Parses a function from a line */
-
-        // Function filled with default values to be modified
-        let mut func = Function {
-            args: vec![],
-            body: vec![],
-            name: String::new(),
-            positions: [ line.first_position(), line.last_position() ],
-            public: false,
-            return_type: TypeKind::NoneType.rc(),
-            variable_instance_method: None,
-        };
-
-        match func.parse_function_declaration(line.line_tokens)? {
-            Some(i) => {
-                if line.line_derivs.is_empty() {
-                    let inline_body_virtual_line = Line {
-                        line_tokens: &line.line_tokens[i+1..],
-                        line_derivs: vec![]
-                    };
-
-                    func.body = parse_statement_block(&vec![ inline_body_virtual_line ])?;
-                } else {
-                    return Error::new(ErrorKind::SyntaxError)
-                                .set_position(line.line_derivs[0].line_tokens.first().unwrap().position())
-                                .set_message("a function cannot have an inline definition and indented block")
-                                .into();
-                }
-            },
-            
-            None => func.body = parse_statement_block(&line.line_derivs)?,
-        }
-
-        Ok(func)
-    }
-
-
     fn parse_function_args(&mut self, args_tokens: &Vec<Token>) -> Result<(), Vec<Error>> {
        /* Parses a list of function arguments
         *
@@ -251,6 +213,44 @@ impl Into<TypeKind> for &Function {
             return_type: self.return_type.clone()
         }
     }
+}
+
+
+pub fn parse_function(line: &Line) -> Result<Function, Vec<Error>> {
+    /* Parses a function from a line */
+
+    // Function filled with default values to be modified
+    let mut func = Function {
+        args: vec![],
+        body: vec![],
+        name: String::new(),
+        positions: [ line.first_position(), line.last_position() ],
+        public: false,
+        return_type: TypeKind::NoneType.rc(),
+        variable_instance_method: None,
+    };
+
+    match func.parse_function_declaration(line.line_tokens)? {
+        Some(i) => {
+            if line.line_derivs.is_empty() {
+                let inline_body_virtual_line = Line {
+                    line_tokens: &line.line_tokens[i+1..],
+                    line_derivs: vec![]
+                };
+
+                func.body = parse_statement_block(&vec![ inline_body_virtual_line ])?;
+            } else {
+                return Error::new(ErrorKind::SyntaxError)
+                            .set_position(line.line_derivs[0].line_tokens.first().unwrap().position())
+                            .set_message("a function cannot have an inline definition and indented block")
+                            .into();
+            }
+        },
+        
+        None => func.body = parse_statement_block(&line.line_derivs)?,
+    }
+
+    Ok(func)
 }
 
 
